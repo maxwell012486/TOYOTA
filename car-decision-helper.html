@@ -1,0 +1,1035 @@
+<title>내 차 결정 도우미</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#eceff3">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one narrow column like a dealer quote sheet — sticky 4-step header, cards by role, fixed prev/next bar. */
+:root{
+  --paper:#eceff3; --surface:#ffffff; --sunk:#f4f6f8; --ink:#14202d; --muted:#596575; --line:#d5dae1;
+  --accent:#14202d; --on-accent:#ffffff;
+  --c0:#1f63c9; --c1:#dd6a10; --c2:#1d8657; --c3:#7650c4;
+  --warn:#9a4f00; --warn-bg:#fff1dc; --good:#1b7246;
+  --f-display:"Black Han Sans","IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0e131a; --surface:#171f29; --sunk:#111820; --ink:#e7ebf0; --muted:#98a4b3; --line:#2a3644;
+    --accent:#e7ebf0; --on-accent:#0e131a;
+    --c0:#5e9ef6; --c1:#f39341; --c2:#4cc48c; --c3:#a98ef1;
+    --warn:#ffb867; --warn-bg:#3a2a13; --good:#62d49c;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0e131a; --surface:#171f29; --sunk:#111820; --ink:#e7ebf0; --muted:#98a4b3; --line:#2a3644;
+  --accent:#e7ebf0; --on-accent:#0e131a;
+  --c0:#5e9ef6; --c1:#f39341; --c2:#4cc48c; --c3:#a98ef1;
+  --warn:#ffb867; --warn-bg:#3a2a13; --good:#62d49c;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--c0);outline-offset:2px}
+.wrap{max-width:480px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{padding-block:10px 8px;display:grid;gap:8px}
+.brand{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand b{font-family:var(--f-display);font-weight:400;font-size:18px;letter-spacing:.01em}
+.brand small{color:var(--muted);font-size:12px;margin-left:6px}
+.icon-btn{border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:6px 10px;font-size:13px}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;list-style:none;margin:0;padding:0}
+.steps button{width:100%;border:0;background:none;padding:4px 0 2px;display:grid;gap:5px;text-align:left;color:var(--muted);font-size:12px}
+.steps button::before{content:"";height:4px;border-radius:2px;background:var(--line)}
+.steps button.done::before{background:var(--muted)}
+.steps button[aria-current="step"]{color:var(--ink);font-weight:600}
+.steps button[aria-current="step"]::before{background:var(--accent)}
+.steps .n{font-family:var(--f-num);font-size:11px}
+
+main .wrap{padding-block:18px calc(96px + env(safe-area-inset-bottom,0px));display:grid;gap:22px}
+h1.h{font-family:var(--f-display);font-weight:400;font-size:26px;line-height:1.2;margin:0;text-wrap:balance}
+.lede{margin:6px 0 0;color:var(--muted);font-size:14px}
+h2{font-size:16px;margin:0 0 10px;font-weight:700;text-wrap:balance}
+h2 .sub{font-weight:400;color:var(--muted);font-size:13px;margin-left:6px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}
+.note{color:var(--muted);font-size:12.5px;margin:8px 0 0}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--cc);margin-right:6px;vertical-align:1px;flex:none}
+.cc0{--cc:var(--c0);--ct:rgba(31,99,201,.14)} .cc1{--cc:var(--c1);--ct:rgba(221,106,16,.14)} .cc2{--cc:var(--c2);--ct:rgba(29,134,87,.14)} .cc3{--cc:var(--c3);--ct:rgba(118,80,196,.14)}
+
+/* step 1 */
+.cars{display:grid;grid-auto-flow:column;grid-auto-columns:calc(50% - 6px);gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px}
+.car{scroll-snap-align:start;min-width:0;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--cc);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column}
+.car img,.photo{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--sunk);max-width:100%}
+.car .body{padding:10px 12px 12px;display:grid;gap:8px;flex:1}
+.car .nm{font-weight:700;font-size:15px;line-height:1.3}
+.car .meta{color:var(--muted);font-size:12px}
+.car .credit{color:var(--muted);font-size:10.5px;opacity:.85}
+.quote{display:grid;gap:2px;font-size:12.5px;border-top:1px dashed var(--line);padding-top:8px}
+.quote div{display:flex;justify-content:space-between;gap:6px}
+.quote .disc{color:var(--good)}
+.quote .final{margin-top:4px;align-items:baseline}
+.quote .final b{font-family:var(--f-num);font-size:17px;color:var(--cc)}
+.btn{border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:8px 12px;font-size:14px;font-weight:500}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
+.btn.danger{color:#c0392b;border-color:rgba(192,57,43,.45)}
+.btn.wide{width:100%}
+.add{border:1.5px dashed var(--line);background:none;border-radius:var(--r);padding:12px;color:var(--muted);font-weight:600;width:100%}
+.tbl-wrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+tr:last-child th,tr:last-child td{border-bottom:0}
+th[scope=row]{text-align:left;font-weight:500;color:var(--muted)}
+thead th{font-size:12.5px;color:var(--ink);font-weight:700;background:var(--sunk)}
+thead th:first-child{background:var(--sunk)}
+td.win{font-weight:700;color:var(--cc)}
+td.win::after{content:" ●";font-size:9px;vertical-align:2px}
+td.txt{white-space:normal;min-width:7em;font-size:12.5px}
+tr.total th,tr.total td{font-weight:700;color:var(--ink);background:var(--sunk);font-size:14px}
+.pc{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:grid;gap:8px}
+.pc h3{margin:0;font-size:15px;display:flex;align-items:center}
+.pc-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pc-grid > div{min-width:0}
+.pc ul{margin:0;padding-left:1.1em;display:grid;gap:4px;font-size:13.5px}
+.lbl{font-size:11.5px;letter-spacing:.06em;color:var(--muted);font-weight:600;margin-bottom:4px}
+.lbl.plus{color:var(--good)} .lbl.minus{color:#c0392b}
+@media (max-width:380px){.pc-grid{grid-template-columns:1fr}}
+
+/* step 2 */
+.slider-row{display:grid;grid-template-columns:4.2em 1fr 3.2em;align-items:center;gap:10px;padding:6px 0}
+.slider-row label{font-weight:500;font-size:14px}
+.slider-row output{text-align:right;font-family:var(--f-num);font-size:14px}
+input[type=range]{width:100%;accent-color:var(--cc,var(--accent));height:28px;margin:0}
+.sumbar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--sunk);margin-top:8px}
+.sumbar span{display:block;height:100%}
+.sumtxt{display:flex;justify-content:space-between;font-size:13px;margin-top:6px}
+.warnbox{background:var(--warn-bg);color:var(--warn);border-radius:10px;padding:8px 10px;font-size:13px;margin-top:8px}
+.crit{padding:12px 0;border-top:1px solid var(--line)}
+.crit:first-of-type{border-top:0;padding-top:0}
+.crit h3{margin:0;font-size:14.5px}
+.crit p{margin:2px 0 6px;color:var(--muted);font-size:12.5px}
+.score-row{display:grid;grid-template-columns:minmax(0,6.5em) 1fr 2.4em;gap:10px;align-items:center;padding:3px 0;font-size:13.5px}
+.score-row .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score-row output{font-family:var(--f-num);text-align:right;font-weight:600}
+.live{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;font-size:13.5px}
+.live b{font-family:var(--f-num);font-size:18px;color:var(--cc)}
+textarea,input[type=text],input[type=number],input[type=url],select{width:100%;border:1px solid var(--line);background:var(--sunk);border-radius:10px;padding:9px 10px;font-size:15px}
+textarea{min-height:64px;resize:vertical}
+.field{display:grid;gap:4px}
+.field > span{font-size:13px;font-weight:500}
+.field small{color:var(--muted);font-size:12px}
+.fields{display:grid;gap:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two > *{min-width:0}
+
+/* step 3 */
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.days label{display:grid;gap:3px;text-align:center;font-size:12px;color:var(--muted);min-width:0}
+.days input{text-align:center;padding:8px 2px;font-family:var(--f-num);font-size:14px}
+.kmline{display:flex;justify-content:space-between;font-size:13.5px;margin-top:8px}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{padding:9px 8px;text-align:center;font-size:14px;background:var(--sunk);cursor:pointer}
+.seg input:checked + label{background:var(--accent);color:var(--on-accent);font-weight:600}
+.seg input:focus-visible + label{outline:2px solid var(--c0);outline-offset:-2px}
+.chartbox{position:relative;height:240px}
+.insight{background:var(--sunk);border-radius:10px;padding:10px 12px;font-size:14px;display:grid;gap:6px;margin-top:12px}
+.insight p{margin:0}
+
+/* step 4 share card */
+.share{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px 16px 14px;display:grid;gap:14px}
+.eyebrow{font-size:11.5px;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.sc-head{font-family:var(--f-display);font-weight:400;font-size:32px;line-height:1.15;margin:2px 0 0;text-wrap:balance}
+.sc-head em{font-style:normal;color:var(--cc)}
+.sc-vs{font-size:15px;color:var(--muted);margin-top:2px}
+.sc-vs b{font-family:var(--f-num);font-size:20px;color:var(--cc)}
+.share .photo{border-radius:12px}
+.bars{display:grid;gap:6px}
+.bar{display:grid;grid-template-columns:minmax(0,5.5em) 1fr 3.2em;gap:8px;align-items:center;font-size:13px}
+.bar .who{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .track{height:10px;background:var(--sunk);border-radius:5px;overflow:hidden}
+.bar .fill{height:100%;background:var(--cc);border-radius:5px}
+.bar b{font-family:var(--f-num);text-align:right}
+.radar{position:relative;height:250px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--sunk);border-radius:12px;padding:10px 8px;display:grid;gap:2px;min-width:0}
+.kpi .k{font-size:11.5px;color:var(--muted)}
+.kpi .v{font-family:var(--f-num);font-weight:600;font-size:16px;line-height:1.2}
+.kpi .v small{font-size:11px;font-weight:500}
+.kpi .s{font-size:11.5px}
+.reasons{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.reasons li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;font-size:14.5px;line-height:1.5}
+.reasons .tag{font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:6px;background:var(--ct);color:var(--cc);margin-top:2px;white-space:nowrap}
+.reasons li.trade .tag{background:var(--sunk);color:var(--muted)}
+.reasons li.trade{color:var(--muted)}
+.memo{border-top:1px dashed var(--line);padding-top:10px;display:grid;gap:4px;font-size:13.5px}
+.memo b{font-weight:600;margin-right:6px}
+.sc-foot{font-size:11px;color:var(--muted);margin:0;line-height:1.5}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.actions .btn{padding:12px}
+.actions .full{grid-column:1/-1}
+
+/* bottom nav */
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.nav .wrap{padding-block:10px;display:grid;grid-template-columns:1fr 2fr;gap:8px}
+.nav .btn{padding:12px}
+.nav .btn:disabled{opacity:.4}
+
+/* sheet */
+.scrim{position:fixed;inset:0;z-index:40;background:rgb(0 0 0 / .45);display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:520px;max-height:92%;overflow-y:auto;border-radius:18px 18px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:14px}
+.sheet-head{display:flex;justify-content:space-between;align-items:center}
+.sheet-head h2{margin:0;font-size:18px}
+.photo-edit{display:grid;grid-template-columns:120px 1fr;gap:10px;align-items:center}
+.photo-edit img{width:120px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;background:var(--sunk)}
+.row-btns{display:flex;flex-wrap:wrap;gap:6px}
+.overlay-img{max-width:100%;border-radius:12px;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:50;background:var(--accent);color:var(--on-accent);padding:10px 16px;border-radius:12px;font-size:14px;max-width:calc(100% - 32px);text-align:center;box-shadow:0 6px 20px rgb(0 0 0 / .2)}
+@media (prefers-reduced-motion: no-preference){.toast{animation:pop .18s ease-out}@keyframes pop{from{opacity:0;transform:translate(-50%,6px)}}}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><div><b>내 차 결정 도우미</b><small id="pairName"></small></div><button class="icon-btn" id="openSettings" type="button">백업·설정</button></div>
+    <ol class="steps" id="steps"></ol>
+  </div>
+</header>
+<main><div class="wrap" id="view"></div></main>
+<nav class="nav" aria-label="단계 이동"><div class="wrap"><button class="btn" id="prev" type="button">이전</button><button class="btn primary" id="next" type="button">다음</button></div></nav>
+<div id="sheetRoot"></div>
+<div id="toastRoot" aria-live="polite"></div>
+<input type="file" id="importFile" accept="application/json,.json" class="visually-hidden" tabindex="-1">
+<input type="file" id="photoFile" accept="image/*" class="visually-hidden" tabindex="-1">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+(function(){
+'use strict';
+
+/* ---------- 기본 데이터 (PRD 7장) ---------- */
+const KEY = 'carDecision.v1';
+const STEP_NAMES = ['비교','기준','비용','결론'];
+const DAYS = [['mon','월'],['tue','화'],['wed','수'],['thu','목'],['fri','금'],['sat','토'],['sun','일']];
+const CRIT = [
+  {k:'price', label:'가격', topic:'가격은', auto:true},
+  {k:'fuel', label:'연비', topic:'연비는', auto:true},
+  {k:'design', label:'디자인', topic:'디자인은', desc:'외관·실내가 얼마나 마음에 드는지'},
+  {k:'durability', label:'내구성', topic:'내구성은', desc:'고장 없이 오래 탈 수 있다는 믿음'},
+  {k:'pref', label:'선호도', topic:'선호도는', desc:'승하차·시야, 승차감, 가족 의견을 포함한 체감'}
+];
+const ACQ_RATE = 0.07;          // 취득세 7%
+const TAX_END_2027 = 106;       // 개소세 감면 종료분(만 원): 개소세 70 + 교육세 21 + 부가세 9.1 + 취득세 6.4
+const CAR_HEX = ['#1f63c9','#dd6a10','#1d8657','#7650c4'];
+
+function defaults(){
+  return {
+    v:1, step:1,
+    cars:[
+      {id:'camry', name:'Camry XLE HEV', short:'캠리', year:'2026', color:0, body:'세단',
+       price:4843, discount:400, fuel:17.1, power:'224~225마력', drive:'전륜(FWD)',
+       powertrain:'2.5L 하이브리드, e-CVT', length:4920, width:1840, height:1445, wheelbase:2825, photo:'',
+       pros:['할인 400만 원으로 실구매가가 약 450만 원 낮음','세단 특유의 낮은 무게중심과 안정적인 고속 승차감 (금·일 67km 구간에 유리)','오너 평가 연비 만족도 높음','아내 차(SUV)와 차종이 겹치지 않아 가족 차량 구성이 다양해짐'],
+       cons:['낮은 시트 포지션으로 승하차가 SUV보다 불편함','엔진 개입 시 소음과 고속 풍절음이 아쉽다는 오너 의견','공인연비는 RAV4보다 낮음','차체가 길어 주차 시 부담'],
+       scores:{design:7, durability:9, pref:7}},
+      {id:'rav4', name:'RAV4 XLE HEV 2WD', short:'RAV4', year:'2026', color:1, body:'SUV',
+       price:4990, discount:100, fuel:19.0, power:'186 (단위 확인 필요)', drive:'전륜(2WD)',
+       powertrain:'2.5L 하이브리드', length:4600, width:1855, height:1680, wheelbase:2690, photo:'',
+       pros:['공인 복합연비 19.0km/L로 더 우수','높은 시야와 편한 승하차 (지금 몸에 익은 장점)','6세대 풀체인지 신형 디자인','짧은 전장으로 마트·학원 주차가 편함'],
+       cons:['할인 후 가격이 약 450만 원 높음','SUV를 이미 타봤고 아내 차도 SUV라 차종이 중복됨','2WD XLE는 사륜(AWD)이 아님','세단보다 고속 안정감과 정숙성 면에서 불리할 수 있음'],
+       scores:{design:7, durability:9, pref:7}}
+    ],
+    weights:{price:35, fuel:20, design:15, durability:15, pref:15},
+    km:{mon:10, tue:10, wed:10, thu:10, fri:67, sat:10, sun:67},
+    gas:1858, region:'경기도 성남시 (분당)', bondRate:12, bondDisc:6, delivery:'2026',
+    memo:{wife:'', kids:''}
+  };
+}
+
+/* ---------- 유틸 ---------- */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>[...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (v,d=0)=>{ const n = parseFloat(String(v).replace(/,/g,'')); return isFinite(n) ? n : d; };
+const r1 = n => Math.round(n*10)/10;
+const f1 = n => r1(n).toLocaleString('ko-KR',{minimumFractionDigits:1, maximumFractionDigits:1});
+const f0 = n => Math.round(n).toLocaleString('ko-KR');
+const fm = n => (Math.abs(r1(n) - Math.round(n)) < 1e-9 ? f0(n) : f1(n));   // 만 원 표기
+const clamp = (n,a,b)=>Math.min(b,Math.max(a,n));
+function batchim(w){
+  w = String(w).trim(); const ch = w[w.length-1] || ''; const c = ch.charCodeAt(0);
+  if (c>=0xAC00 && c<=0xD7A3) return (c-0xAC00)%28 !== 0;
+  if (/[0-9]/.test(ch)) return '013678'.includes(ch);
+  if (/[a-zA-Z]/.test(ch)) return 'lmnrLMNR'.includes(ch);
+  return false;
+}
+const iga = w => w + (batchim(w) ? '이' : '가');
+const eunneun = w => w + (batchim(w) ? '은' : '는');
+const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+function rgba(hex,a){
+  const h = hex.replace('#',''); if (h.length !== 6) return hex;
+  return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`;
+}
+const carColor = c => cssVar('--c'+c.color) || CAR_HEX[c.color];
+
+/* ---------- 상태 / 저장 ---------- */
+let state = load();
+function merge(base, src){
+  if (!src || typeof src !== 'object') return base;
+  const out = {...base};
+  for (const k of Object.keys(base)){
+    if (!(k in src)) continue;
+    if (k === 'cars') continue;
+    const b = base[k], s = src[k];
+    if (b && typeof b === 'object' && !Array.isArray(b)) out[k] = merge(b, s);
+    else if (typeof s === typeof b) out[k] = s;
+  }
+  if (Array.isArray(src.cars) && src.cars.length >= 2){
+    out.cars = src.cars.slice(0,4).map((c,i)=>{
+      const tmpl = defaults().cars[i] || defaults().cars[0];
+      const car = {...tmpl, ...c, scores:{...tmpl.scores, ...(c.scores||{})}};
+      car.pros = Array.isArray(c.pros) ? c.pros.map(String) : [];
+      car.cons = Array.isArray(c.cons) ? c.cons.map(String) : [];
+      car.color = clamp(Math.round(num(c.color, i)),0,3);
+      if (!car.id) car.id = 'car'+Date.now()+i;
+      return car;
+    });
+  }
+  return out;
+}
+function load(){
+  try { const raw = localStorage.getItem(KEY); if (raw) return merge(defaults(), JSON.parse(raw)); } catch(e){}
+  return defaults();
+}
+let saveTimer = 0, cardDirty = true;
+function save(){
+  cardDirty = true;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try { localStorage.setItem(KEY, JSON.stringify(state)); }
+    catch(e){ toast('휴대폰 저장 공간이 부족해 자동 저장하지 못했어요. 백업을 내보내 두세요.'); }
+  }, 250);
+}
+
+/* ---------- 계산 (PRD 8장) ---------- */
+function compute(s){
+  const weekKm = DAYS.reduce((a,[k])=>a + Math.max(0,num(s.km[k])),0);
+  const annualKm = weekKm * 52;
+  const gas = Math.max(0, num(s.gas));
+  const extra = s.delivery === '2027' ? TAX_END_2027 : 0;
+  const cars = s.cars.map(c=>{
+    const net = num(c.price) - num(c.discount);
+    const base = net / 1.1;
+    const acq = base * ACQ_RATE;
+    const bond = base * num(s.bondRate)/100;
+    const bondLoss = bond * num(s.bondDisc)/100;
+    const total = net + acq + bondLoss + extra;
+    const fuel = num(c.fuel);
+    const fuelCost = fuel > 0 ? annualKm / fuel * gas / 10000 : 0;
+    const cum = {1: total + fuelCost, 5: total + fuelCost*5, 10: total + fuelCost*10, 20: total + fuelCost*20};
+    return {car:c, net, base, acq, bond, bondLoss, extra, total, fuel, fuelCost, cum};
+  });
+  const min5 = Math.min(...cars.map(x=>x.cum[5]));
+  const maxFuel = Math.max(...cars.map(x=>x.fuel), 0.0001);
+  const w = s.weights; const wsum = CRIT.reduce((a,c)=>a + Math.max(0,num(w[c.k])),0);
+  cars.forEach(x=>{
+    const pct = min5 > 0 ? (x.cum[5]-min5)/min5*100 : 0;
+    x.pct5 = pct;
+    x.s = {
+      price: Math.max(1, 10 - 0.5*pct),
+      fuel: 10 * x.fuel / maxFuel,
+      design: clamp(num(x.car.scores.design,5),1,10),
+      durability: clamp(num(x.car.scores.durability,5),1,10),
+      pref: clamp(num(x.car.scores.pref,5),1,10)
+    };
+    x.score = wsum > 0 ? CRIT.reduce((a,c)=>a + x.s[c.k]*Math.max(0,num(w[c.k])),0) / wsum * 10 : 0;
+  });
+  const ranked = [...cars].sort((a,b)=>b.score - a.score);
+  return {cars, ranked, weekKm, annualKm, gas, wsum, extra};
+}
+
+function reasons(rec, rival, R){
+  const w = state.weights;
+  const contrib = CRIT.map(c=>({c, d: Math.max(0,num(w[c.k]))/(R.wsum||1) * (rec.s[c.k]-rival.s[c.k])}));
+  const fav = contrib.filter(x=>x.d > 1e-4).sort((a,b)=>b.d-a.d);
+  const unf = contrib.filter(x=>x.d < -1e-4).sort((a,b)=>a.d-b.d);
+  const rn = rival.car.short || rival.car.name;
+  const lines = fav.slice(0,3).map(({c})=>{
+    let t;
+    if (c.k==='price') t = `5년 총비용이 ${fm(rival.cum[5]-rec.cum[5])}만 원 적게 듭니다 (취득세·공채 포함).`;
+    else if (c.k==='fuel') t = `연비가 ${f1(rec.fuel-rival.fuel)}km/L 좋아 1년 연료비가 ${f1(rival.fuelCost-rec.fuelCost)}만 원 줄어듭니다.`;
+    else if (c.k==='pref') t = `직접 타본 느낌(승하차·시야·승차감)에서 더 높은 점수를 받았습니다 (${fm(rec.s.pref)}점 대 ${fm(rival.s.pref)}점).`;
+    else t = `${c.label} 점수에서 ${fm(rec.s[c.k])}점 대 ${fm(rival.s[c.k])}점으로 앞섭니다.`;
+    return {tag:c.label, text:t, trade:false};
+  });
+  for (const {c} of unf){
+    if (lines.length >= 3) break;
+    let t;
+    if (c.k==='price') t = `반대로 가격은 ${iga(rn)} 낫습니다. 5년 총비용이 ${fm(rec.cum[5]-rival.cum[5])}만 원 적어요.`;
+    else if (c.k==='fuel') t = `반대로 연비는 ${iga(rn)} 낫습니다. 1년 연료비가 ${f1(rec.fuelCost-rival.fuelCost)}만 원 적어요.`;
+    else t = `반대로 ${c.topic} ${iga(rn)} 낫습니다 (${fm(rival.s[c.k])}점 대 ${fm(rec.s[c.k])}점).`;
+    lines.push({tag:c.label, text:t, trade:true});
+  }
+  const tied = contrib.filter(x=>Math.abs(x.d) <= 1e-4 && num(w[x.c.k]) > 0 && !x.c.auto).map(x=>x.c);
+  if (lines.length < 3 && tied.length){
+    const gap = rec.score - rival.score;
+    const perPt = Math.max(...tied.map(c=>num(w[c.k]))) / (R.wsum||1) * 10;
+    const names = tied.map(c=>c.label).join('·');
+    const t = gap > 0.05 && perPt > 0
+      ? `${eunneun(names)} 두 차 점수가 같습니다. ${iga(rn)} 뒤집으려면 이 항목들에서 합계 약 ${Math.ceil(gap/perPt)}점이 더 필요해요.`
+      : `${eunneun(names)} 두 차 점수가 같습니다.`;
+    lines.push({tag:'동점', text:t, trade:true});
+  }
+  return lines;
+}
+
+/* 연비로 가격 차이를 따라잡는 데 걸리는 해 */
+function catchUps(R){
+  const base = [...R.cars].sort((a,b)=>a.total-b.total)[0];
+  const bn = base.car.short || base.car.name;
+  return R.cars.filter(x=>x!==base).map(x=>{
+    const xn = x.car.short || x.car.name;
+    const gap = x.total - base.total, save = base.fuelCost - x.fuelCost;
+    if (save <= 0.05) return `${eunneun(xn)} ${bn}보다 사는 값도 ${fm(gap)}만 원 비싸고 연료비도 적지 않아, 시간이 지나도 차이가 줄지 않습니다.`;
+    const yrs = gap / save;
+    let t = `${iga(xn)} 연비로 가격 차이(${fm(gap)}만 원)를 따라잡는 데 <b>약 ${f0(yrs)}년</b>이 걸립니다. 연비 이득은 연 ${f1(save)}만 원입니다.`;
+    if (yrs > 20) t += ' 20년을 타도 따라잡지 못하니, 결론을 바꾸는 변수는 디자인과 선호도 점수입니다.';
+    return t;
+  });
+}
+
+/* ---------- 차량 일러스트 (사진 대신 기본 제공) ---------- */
+function illusSVG(kind, hex){
+  const light = rgba(hex, .78);
+  const bg = `<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5f7fa"/><stop offset="1" stop-color="#dbe1e8"/></linearGradient><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${light}"/><stop offset=".55" stop-color="${hex}"/><stop offset="1" stop-color="${hex}"/></linearGradient></defs><rect width="400" height="225" fill="url(#g)"/><rect y="178" width="400" height="47" fill="#cfd6de"/><ellipse cx="204" cy="180" rx="178" ry="9" fill="#000" fill-opacity=".16"/>`;
+  const wheel = (cx,cy,r)=>`<circle cx="${cx}" cy="${cy}" r="${r+4}" fill="#262c34"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="#15191f"/><circle cx="${cx}" cy="${cy}" r="${r*.58}" fill="#a3adb8"/><circle cx="${cx}" cy="${cy}" r="${r*.2}" fill="#5d6772"/>`;
+  let body;
+  if (kind === 'suv'){
+    body = `<rect x="172" y="44" width="150" height="5" rx="2.5" fill="#2a323c"/>
+      <path d="M26 166 L26 122 Q28 104 52 101 L98 98 L136 60 Q144 52 160 52 L318 52 Q334 52 344 64 L370 98 Q384 102 384 120 L384 160 Q384 166 378 166 Z" fill="url(#b)"/>
+      <path d="M146 96 L172 64 L320 64 Q328 64 334 72 L354 96 Z" fill="#1b2633" fill-opacity=".85"/>
+      <rect x="240" y="62" width="7" height="36" fill="${hex}"/>
+      <path d="M26 150 L384 150 L384 166 L26 166 Z" fill="#232a33" fill-opacity=".6"/>
+      <path d="M40 124 L380 124" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>
+      <rect x="370" y="106" width="14" height="7" rx="3" fill="#fff6d6"/><rect x="26" y="110" width="10" height="8" rx="3" fill="#d83a2e"/>
+      ${wheel(104,164,26)}${wheel(306,164,26)}`;
+  } else {
+    body = `<path d="M24 160 L30 134 Q36 122 64 118 L128 113 Q160 84 198 78 L270 78 Q300 80 328 110 L366 116 Q382 120 384 138 L384 160 Q384 166 378 166 L30 166 Q24 166 24 160 Z" fill="url(#b)"/>
+      <path d="M142 112 Q168 88 200 85 L264 85 Q288 87 310 111 Z" fill="#1b2633" fill-opacity=".85"/>
+      <rect x="228" y="84" width="6" height="30" fill="${hex}"/>
+      <path d="M36 138 L380 138" stroke="#fff" stroke-opacity=".35" stroke-width="2"/>
+      <rect x="370" y="124" width="14" height="6" rx="3" fill="#fff6d6"/><rect x="24" y="128" width="10" height="6" rx="3" fill="#d83a2e"/>
+      ${wheel(102,164,24)}${wheel(310,164,24)}`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 225" width="800" height="450">${bg}${body}</svg>`;
+}
+const illusCache = {};
+const illusKey = c => (c.body === 'SUV' ? 'suv' : 'sedan') + c.color;
+function illusSrc(c){
+  const k = illusKey(c);
+  return illusCache[k] || 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(illusSVG(c.body==='SUV'?'suv':'sedan', CAR_HEX[c.color]));
+}
+function rasterizeAll(){
+  const jobs = [];
+  for (const kind of ['sedan','suv']) for (let i=0;i<4;i++){
+    const k = kind + i;
+    const src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(illusSVG(kind, CAR_HEX[i]));
+    jobs.push(new Promise(res=>{
+      const img = new Image();
+      img.onload = ()=>{ try{ const cv = document.createElement('canvas'); cv.width=800; cv.height=450; cv.getContext('2d').drawImage(img,0,0,800,450); illusCache[k] = cv.toDataURL('image/png'); }catch(e){} res(); };
+      img.onerror = ()=>res();
+      img.src = src;
+    }));
+  }
+  return Promise.all(jobs);
+}
+/* 기본 2대의 공식 사진 (출처: 한국토요타 toyota.co.kr, 개인 비교용).
+   저장소에는 사진이 없고, build.ps1이 official-photos/의 사진으로 자리표시자를 채운다. 비어 있으면 그림을 쓴다. */
+const OFFICIAL = Object.fromEntries(Object.entries({
+  camry: '__CAMRY_JPG__',
+  rav4: '__RAV4_JPG__'
+}).filter(([,v])=>!v.startsWith('__')).map(([k,v])=>[k,'data:image/jpeg;base64,'+v]));
+const PHOTO_CREDIT = '사진: 한국토요타 (toyota.co.kr)';
+const isOfficial = c => !c.photo && !!OFFICIAL[c.id];
+const photoSrc = c => c.photo || OFFICIAL[c.id] || illusSrc(c);
+const photoImg = (c, cls='') => `<img class="${cls}" src="${esc(photoSrc(c))}" data-fallback="${esc(illusSrc(c))}" alt="${esc(c.name)} 사진" loading="eager">`;
+document.addEventListener('error', e=>{
+  const t = e.target;
+  if (t && t.tagName === 'IMG' && t.dataset.fallback && t.src !== t.dataset.fallback){ t.src = t.dataset.fallback; }
+}, true);
+
+/* ---------- 공통 UI ---------- */
+function toast(msg, ms=2600){
+  const root = $('#toastRoot'); root.innerHTML = `<div class="toast">${esc(msg)}</div>`;
+  clearTimeout(toast.t); toast.t = setTimeout(()=>{ root.innerHTML=''; }, ms);
+}
+let charts = [];
+function killCharts(){ charts.forEach(c=>{ try{c.destroy();}catch(e){} }); charts = []; }
+function chartBase(){
+  if (!window.Chart) return false;
+  Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  Chart.defaults.color = cssVar('--muted');
+  Chart.defaults.borderColor = cssVar('--line');
+  Chart.defaults.animation = false;
+  return true;
+}
+
+function renderSteps(){
+  $('#steps').innerHTML = STEP_NAMES.map((n,i)=>{
+    const s = i+1;
+    return `<li><button type="button" data-go="${s}" class="${s < state.step ? 'done':''}" ${s===state.step?'aria-current="step"':''}><span><span class="n">${s}/4</span> ${n}</span></button></li>`;
+  }).join('');
+  $('#pairName').textContent = state.cars.map(c=>c.short||c.name).join(' vs ');
+  const prev = $('#prev'), next = $('#next');
+  prev.disabled = state.step === 1;
+  next.textContent = state.step === 4 ? '처음부터 다시' : (state.step === 3 ? '결론 보기' : '다음');
+}
+
+function go(step){
+  state.step = clamp(step,1,4); save();
+  render();
+  window.scrollTo({top:0});
+}
+
+function render(){
+  killCharts();
+  renderSteps();
+  const v = $('#view');
+  if (state.step === 1) v.innerHTML = step1();
+  if (state.step === 2) { v.innerHTML = step2(); refresh2(); }
+  if (state.step === 3) { v.innerHTML = step3(); refresh3(); }
+  if (state.step === 4) { v.innerHTML = step4(); drawRadar(); scheduleCapture(); }
+}
+
+/* ---------- ① 차량 비교 ---------- */
+function step1(){
+  const R = compute(state);
+  const cs = state.cars;
+  const best = (key, dir) => { const vals = cs.map(c=>num(c[key], NaN)); const ok = vals.filter(isFinite); if (ok.length < 2) return -1; const t = dir>0 ? Math.max(...ok) : Math.min(...ok); return vals.filter(v=>v===t).length === 1 ? vals.indexOf(t) : -1; };
+  const netVals = R.cars.map(x=>x.net); const minNet = Math.min(...netVals);
+  const netWin = netVals.filter(v=>v===minNet).length===1 ? netVals.indexOf(minNet) : -1;
+  const row = (label, fn, win=-1, txt=false) => `<tr><th scope="row">${label}</th>${cs.map((c,i)=>`<td class="cc${c.color} ${i===win?'win':''} ${txt?'txt':''}">${fn(c,i)}</td>`).join('')}</tr>`;
+  const mm = v => num(v) ? f0(num(v)) : '—';
+  return `
+  <section><h1 class="h">${esc(cs.map(c=>c.short||c.name).join(' vs '))}, 나란히 보기</h1>
+  <p class="lede">분당지점 견적 기준이에요. 카드의 ‘수정’에서 값과 사진을 바꿀 수 있어요.</p></section>
+  <section>
+    <div class="cars">${cs.map((c,i)=>`
+      <article class="car cc${c.color}">
+        ${photoImg(c)}
+        <div class="body">
+          <div><div class="nm">${esc(c.name)}</div><div class="meta">${esc(c.year)}년형 · ${esc(c.body)}</div>${isOfficial(c) ? '<div class="credit">사진: 한국토요타</div>' : ''}</div>
+          <div class="quote">
+            <div><span>출고가</span><span class="num">${fm(num(c.price))}만</span></div>
+            <div class="disc"><span>분당 할인</span><span class="num">−${fm(num(c.discount))}만</span></div>
+            <div class="final"><span>할인 후</span><b>${fm(R.cars[i].net)}만</b></div>
+          </div>
+          <button class="btn sm" type="button" data-edit="${i}">수정</button>
+        </div>
+      </article>`).join('')}
+    </div>
+    ${cs.length > 2 ? '<p class="note">옆으로 밀어서 다른 차를 보세요.</p>' : ''}
+  </section>
+  ${cs.length < 4 ? '<button class="add" type="button" data-add>+ 차종 추가</button>' : ''}
+  <section>
+    <h2>핵심 제원 <span class="sub">● 유리한 값</span></h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th scope="col"></th>${cs.map(c=>`<th scope="col"><span class="dot cc${c.color}"></span>${esc(c.short||c.name)}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${row('할인 후 가격', (c,i)=>`<span class="num">${fm(R.cars[i].net)}만</span>`, netWin)}
+        ${row('복합연비', c=>`<span class="num">${f1(num(c.fuel))}</span> km/L`, best('fuel',1))}
+        ${row('파워트레인', c=>esc(c.powertrain||'—'), -1, true)}
+        ${row('시스템 출력', c=>esc(c.power||'—'), -1, true)}
+        ${row('구동방식', c=>esc(c.drive||'—'))}
+        ${row('전장', c=>`<span class="num">${mm(c.length)}</span>`)}
+        ${row('전폭', c=>`<span class="num">${mm(c.width)}</span>`)}
+        ${row('전고', c=>`<span class="num">${mm(c.height)}</span>`)}
+        ${row('휠베이스', c=>`<span class="num">${mm(c.wheelbase)}</span>`, best('wheelbase',1))}
+        ${row('차체', c=>esc(c.body))}
+      </tbody>
+    </table></div>
+    <p class="note">치수 단위는 mm. 2026년 10월 기사·견적 기준이며 한국토요타 공식 제원표로 최종 확인하세요.${cs.some(isOfficial) ? ` 차량 ${PHOTO_CREDIT}, 개인 비교용.` : ''}</p>
+  </section>
+  <section style="display:grid;gap:12px">
+    <h2 style="margin:0">장단점</h2>
+    ${cs.map((c,i)=>`<article class="pc"><h3><span class="dot cc${c.color}"></span>${esc(c.name)}</h3>
+      <div class="pc-grid">
+        <div><div class="lbl plus">장점</div><ul>${c.pros.map(p=>`<li>${esc(p)}</li>`).join('') || '<li>—</li>'}</ul></div>
+        <div><div class="lbl minus">단점</div><ul>${c.cons.map(p=>`<li>${esc(p)}</li>`).join('') || '<li>—</li>'}</ul></div>
+      </div>
+      <div><button class="btn sm" type="button" data-edit="${i}">장단점 수정</button></div>
+    </article>`).join('')}
+  </section>`;
+}
+
+/* ---------- ② 내 기준·점수 ---------- */
+function step2(){
+  const cs = state.cars;
+  return `
+  <section><h1 class="h">내 기준으로 점수 매기기</h1>
+  <p class="lede">가격과 연비는 계산으로 자동 채점되고, 나머지 셋은 직접 매겨요.</p></section>
+  <section class="card">
+    <h2>가중치 <span class="sub">무엇을 얼마나 중요하게 볼까</span></h2>
+    ${CRIT.map((c,i)=>`<div class="slider-row" style="--cc:${['var(--accent)','var(--accent)','var(--muted)','var(--muted)','var(--muted)'][i]}">
+      <label for="w_${c.k}">${c.label}</label>
+      <input type="range" id="w_${c.k}" min="0" max="60" step="5" value="${num(state.weights[c.k])}" data-w="${c.k}">
+      <output id="wo_${c.k}">${num(state.weights[c.k])}%</output></div>`).join('')}
+    <div id="sumOut"></div>
+  </section>
+  <section class="card">
+    <h2>자동 점수 <span class="sub">10점 만점 · 수정 불가</span></h2>
+    <div id="autoOut"></div>
+  </section>
+  <section class="card">
+    <h2>직접 매기는 점수 <span class="sub">1~10점</span></h2>
+    ${CRIT.filter(c=>!c.auto).map(c=>`<div class="crit"><h3>${c.label}</h3><p>${c.desc}</p>
+      ${cs.map((car,i)=>`<div class="score-row cc${car.color}"><label class="who" for="s_${c.k}_${i}"><span class="dot"></span>${esc(car.short||car.name)}</label>
+        <input type="range" id="s_${c.k}_${i}" min="1" max="10" step="1" value="${clamp(num(car.scores[c.k],5),1,10)}" data-score="${c.k}" data-car="${i}">
+        <output id="so_${c.k}_${i}">${clamp(num(car.scores[c.k],5),1,10)}</output></div>`).join('')}
+    </div>`).join('')}
+  </section>
+  <section class="card">
+    <h2>지금 점수 <span class="sub">100점 만점</span></h2>
+    <div id="liveOut"></div>
+  </section>
+  <section class="card fields">
+    <h2 style="margin:0">가족 한마디 <span class="sub">점수엔 반영 안 하고 결론 카드에 표시</span></h2>
+    <label class="field"><span>아내 한마디</span><textarea id="memoWife" data-memo="wife" placeholder="예: 캠리는 어때? 타고 내리기만 괜찮으면">${esc(state.memo.wife)}</textarea></label>
+    <label class="field"><span>자녀 한마디</span><textarea id="memoKids" data-memo="kids" placeholder="예: 아빠 차는 세단이 멋있어">${esc(state.memo.kids)}</textarea></label>
+  </section>`;
+}
+function refresh2(){
+  const R = compute(state);
+  const sum = CRIT.reduce((a,c)=>a + num(state.weights[c.k]),0);
+  const shades = [1,.75,.5,.35,.22];
+  const acc = cssVar('--ink');
+  $('#sumOut').innerHTML = `
+    <div class="sumbar" aria-hidden="true">${CRIT.map((c,i)=>`<span style="width:${sum? num(state.weights[c.k])/Math.max(sum,100)*100 : 0}%;background:${acc};opacity:${shades[i]}"></span>`).join('')}</div>
+    <div class="sumtxt"><span>${CRIT.map(c=>`${c.label} ${num(state.weights[c.k])}`).join(' · ')}</span><b class="num" style="color:${sum===100?'var(--good)':'var(--warn)'}">합계 ${sum}%</b></div>
+    ${sum!==100 ? `<div class="warnbox">합계가 ${sum}%예요. 100%로 맞춰 주세요. 그 전까지는 비율로 환산해서 계산합니다.</div>` : ''}`;
+  $('#autoOut').innerHTML = `<div class="tbl-wrap" style="border:0"><table>
+    <thead><tr><th scope="col"></th>${R.cars.map(x=>`<th scope="col"><span class="dot cc${x.car.color}"></span>${esc(x.car.short||x.car.name)}</th>`).join('')}</tr></thead>
+    <tbody>
+      <tr><th scope="row">가격 점수</th>${R.cars.map(x=>`<td class="num cc${x.car.color}" style="font-weight:700;color:var(--cc)">${f1(x.s.price)}</td>`).join('')}</tr>
+      <tr><th scope="row">근거: 5년 총비용</th>${R.cars.map(x=>`<td class="num">${fm(x.cum[5])}만<br><small style="color:var(--muted)">${x.pct5<0.05?'최저':'+'+f1(x.pct5)+'%'}</small></td>`).join('')}</tr>
+      <tr><th scope="row">연비 점수</th>${R.cars.map(x=>`<td class="num cc${x.car.color}" style="font-weight:700;color:var(--cc)">${f1(x.s.fuel)}</td>`).join('')}</tr>
+      <tr><th scope="row">근거: 복합연비</th>${R.cars.map(x=>`<td class="num">${f1(x.fuel)} km/L</td>`).join('')}</tr>
+    </tbody></table></div>
+    <p class="note">가격: 5년 총비용이 가장 낮은 차가 10점, 1% 비쌀 때마다 −0.5점(최저 1점). 연비: 10 × (내 연비 ÷ 최고 연비).</p>`;
+  $('#liveOut').innerHTML = `<div class="live">${R.ranked.map((x,i)=>`<span class="cc${x.car.color}">${i===0?'1위 ':''}${esc(x.car.short||x.car.name)} <b>${f1(x.score)}</b>점</span>`).join('')}</div>`;
+}
+
+/* ---------- ③ 실구매·유지비 ---------- */
+function step3(){
+  return `
+  <section><h1 class="h">실제로 드는 돈</h1>
+  <p class="lede">취득세와 공채까지 넣은 실구매 총액, 그리고 타는 동안의 연료비예요.</p></section>
+  <section>
+    <h2>실구매 총액 <span class="sub">만 원</span></h2>
+    <div id="buyOut"></div>
+  </section>
+  <section class="card fields">
+    <h2 style="margin:0">주행 <span class="sub">요일별 km</span></h2>
+    <div class="days">${DAYS.map(([k,l])=>`<label for="km_${k}">${l}<input type="number" inputmode="decimal" min="0" id="km_${k}" data-km="${k}" value="${num(state.km[k])}"></label>`).join('')}</div>
+    <div class="kmline" id="kmOut"></div>
+    <label class="field"><span>휘발유 가격 (원/L)</span><input type="number" inputmode="numeric" id="gas" data-set="gas" value="${num(state.gas)}"><small>2026년 10월 전국 평균 1,857.6원</small></label>
+  </section>
+  <section class="card fields">
+    <h2 style="margin:0">세금 설정</h2>
+    <label class="field"><span>등록 지역</span><input type="text" id="region" data-set="region" value="${esc(state.region)}"></label>
+    <div class="two">
+      <label class="field"><span>공채 매입률 (%)</span><input type="number" inputmode="decimal" step="0.1" id="bondRate" data-set="bondRate" value="${num(state.bondRate)}"></label>
+      <label class="field"><span>즉시매도 할인율 (%)</span><input type="number" inputmode="decimal" step="0.1" id="bondDisc" data-set="bondDisc" value="${num(state.bondDisc)}"></label>
+    </div>
+    <p class="note" style="margin:-4px 0 0">공채 값은 임시값이에요. 분당지점 견적서의 공채 금액으로 맞춰 주세요.</p>
+    <div class="field"><span>출고 시기</span>
+      <div class="seg" role="radiogroup">
+        <input type="radio" name="delivery" id="dl2026" value="2026" ${state.delivery==='2026'?'checked':''}><label for="dl2026">2026년 내</label>
+        <input type="radio" name="delivery" id="dl2027" value="2027" ${state.delivery==='2027'?'checked':''}><label for="dl2027">2027년 이후</label>
+      </div>
+      <small>2027년 이후 출고면 개소세 감면 종료분 106만 원이 차마다 더해져요 (공장 출고일 기준).</small>
+    </div>
+  </section>
+  <section class="card">
+    <h2>누적 총비용 <span class="sub">실구매 총액 + 연료비, 만 원</span></h2>
+    <div class="chartbox"><canvas id="cumChart" aria-label="1·5·10·20년 누적 총비용 막대그래프" role="img"></canvas></div>
+    <div id="cumOut"></div>
+  </section>`;
+}
+function refresh3(){
+  const R = compute(state);
+  const cs = R.cars;
+  const rows = [
+    ['출고가', x=>fm(num(x.car.price))],
+    ['분당 할인', x=>'−'+fm(num(x.car.discount))],
+    ['할인 후 가격', x=>fm(x.net)],
+    ['취득세 7%', x=>'+'+f1(x.acq)],
+    ['공채 할인 손실', x=>'+'+f1(x.bondLoss)],
+  ];
+  if (R.extra) rows.push(['개소세 감면 종료분', x=>'+'+f1(x.extra)]);
+  const minT = Math.min(...cs.map(x=>x.total));
+  $('#buyOut').innerHTML = `<div class="tbl-wrap"><table>
+    <thead><tr><th scope="col"></th>${cs.map(x=>`<th scope="col"><span class="dot cc${x.car.color}"></span>${esc(x.car.short||x.car.name)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(([l,fn])=>`<tr><th scope="row">${l}</th>${cs.map(x=>`<td class="num">${fn(x)}</td>`).join('')}</tr>`).join('')}
+      <tr class="total"><th scope="row">실구매 총액</th>${cs.map(x=>`<td class="num cc${x.car.color} ${x.total===minT && cs.filter(y=>y.total===minT).length===1?'win':''}">${f1(x.total)}</td>`).join('')}</tr>
+      <tr><th scope="row">연간 연료비</th>${cs.map(x=>`<td class="num">${f1(x.fuelCost)}</td>`).join('')}</tr>
+    </tbody></table></div>
+    <p class="note">과세표준 = 할인 후 가격 ÷ 1.1. 공채 손실 = 과세표준 × 매입률 ${num(state.bondRate)}% × 할인율 ${num(state.bondDisc)}%. 하이브리드 취득세 감면은 2024년 말에 끝났어요.</p>`;
+  $('#kmOut').innerHTML = `<span>주 <b class="num">${f0(R.weekKm)}</b> km</span><span>연 <b class="num">${f0(R.annualKm)}</b> km (×52주)</span>`;
+
+  const years = [1,5,10,20];
+  $('#cumOut').innerHTML = `<div class="tbl-wrap" style="margin-top:12px"><table>
+    <thead><tr><th scope="col"></th>${cs.map(x=>`<th scope="col"><span class="dot cc${x.car.color}"></span>${esc(x.car.short||x.car.name)}</th>`).join('')}</tr></thead>
+    <tbody>${years.map(y=>{ const m = Math.min(...cs.map(x=>x.cum[y])); return `<tr><th scope="row">${y}년</th>${cs.map(x=>`<td class="num cc${x.car.color} ${x.cum[y]===m?'win':''}">${f1(x.cum[y])}</td>`).join('')}</tr>`; }).join('')}</tbody>
+    </table></div>
+    <div class="insight">${catchUps(R).map(t=>`<p>${t}</p>`).join('')}</div>`;
+
+  if (!chartBase()) return;
+  killCharts();
+  const cv = $('#cumChart'); if (!cv) return;
+  charts.push(new Chart(cv, {
+    type:'bar',
+    data:{ labels: years.map(y=>y+'년'), datasets: cs.map(x=>({ label:x.car.short||x.car.name, data: years.map(y=>r1(x.cum[y])), backgroundColor: carColor(x.car), borderRadius:4, maxBarThickness:28 })) },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'top', align:'start', labels:{ boxWidth:10, boxHeight:10 } },
+        tooltip:{ callbacks:{ label: c=>`${c.dataset.label}: ${f1(c.parsed.y)}만 원` } } },
+      scales:{ x:{ grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ callback:v=>f0(v) }, grid:{ color: cssVar('--line') } } } }
+  }));
+}
+
+/* ---------- ④ 최종 결론 ---------- */
+function step4(){
+  const R = compute(state);
+  const [rec, rival] = R.ranked;
+  const close = rec.score - rival.score <= 3;
+  const rn = rec.car.short || rec.car.name, vn = rival.car.short || rival.car.name;
+  const lines = reasons(rec, rival, R);
+  const d = new Date();
+  const ds = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  const sign = (v, more, less) => v > 0.05 ? more : (v < -0.05 ? less : '같음');
+  const dTotal = rival.total - rec.total, d5 = rival.cum[5] - rec.cum[5], dFuel = rec.fuel - rival.fuel;
+  const maxScore = 100;
+  const w = state.weights;
+  return `
+  <div id="shareCard" class="share">
+    <div>
+      <div class="eyebrow">우리 집 차 결정 · ${ds}</div>
+      ${close
+        ? `<h1 class="sc-head">박빙: 시승 한 번 더 추천</h1>`
+        : `<h1 class="sc-head cc${rec.car.color}">추천: <em>${esc(rn)}</em></h1>`}
+      <div class="sc-vs"><span class="cc${rec.car.color}">${esc(rn)} <b>${f1(rec.score)}</b>점</span> vs <span class="cc${rival.car.color}">${esc(vn)} <b>${f1(rival.score)}</b>점</span></div>
+    </div>
+    ${photoImg(rec.car, 'photo')}
+    ${R.cars.length > 2 ? `<div class="bars">${R.ranked.map(x=>`<div class="bar cc${x.car.color}"><span class="who">${esc(x.car.short||x.car.name)}</span><span class="track"><span class="fill" style="display:block;width:${x.score/maxScore*100}%"></span></span><b>${f1(x.score)}</b></div>`).join('')}</div>` : ''}
+    <div class="radar"><canvas id="radarChart" role="img" aria-label="5개 기준 점수 레이더 차트"></canvas></div>
+    <div class="kpis">
+      <div class="kpi"><span class="k">실구매 총액 차이</span><span class="v">${fm(Math.abs(dTotal))}<small>만 원</small></span><span class="s cc${rec.car.color}" style="color:var(--cc)">${sign(dTotal, esc(iga(rn))+' 저렴', esc(iga(rn))+' 비쌈')}</span></div>
+      <div class="kpi"><span class="k">5년 총비용 차이</span><span class="v">${fm(Math.abs(d5))}<small>만 원</small></span><span class="s cc${rec.car.color}" style="color:var(--cc)">${sign(d5, esc(iga(rn))+' 저렴', esc(iga(rn))+' 비쌈')}</span></div>
+      <div class="kpi"><span class="k">연비 차이</span><span class="v">${f1(Math.abs(dFuel))}<small>km/L</small></span><span class="s cc${(dFuel>=0?rec:rival).car.color}" style="color:var(--cc)">${Math.abs(dFuel)<0.05?'같음':esc(iga(dFuel>0?rn:vn))+' 좋음'}</span></div>
+    </div>
+    <div>
+      <div class="lbl">${close ? '두 차의 차이' : `${esc(rn)}인 이유`}</div>
+      <ol class="reasons">${lines.map(l=>`<li class="${l.trade?'trade':''} cc${rec.car.color}"><span class="tag">${l.tag}</span><span>${esc(l.text)}</span></li>`).join('') || '<li><span class="tag">—</span><span>두 차의 점수가 모든 항목에서 같습니다.</span></li>'}</ol>
+    </div>
+    ${(state.memo.wife.trim() || state.memo.kids.trim()) ? `<div class="memo">
+      ${state.memo.wife.trim() ? `<div><b>아내</b>${esc(state.memo.wife.trim())}</div>` : ''}
+      ${state.memo.kids.trim() ? `<div><b>아이들</b>${esc(state.memo.kids.trim())}</div>` : ''}
+    </div>` : ''}
+    <p class="sc-foot">가중치 ${CRIT.map(c=>c.label+' '+num(w[c.k])).join('·')} · 휘발유 ${f0(num(state.gas))}원/L · 연 ${f0(R.annualKm)}km · ${state.delivery==='2027'?'2027년 이후':'2026년 내'} 출고 · 분당지점 할인 반영, 취득세·공채 포함${isOfficial(rec.car) ? ' · ' + PHOTO_CREDIT : ''}</p>
+  </div>
+  <div class="actions">
+    <button class="btn" type="button" id="savePng">이미지 저장</button>
+    <button class="btn primary" type="button" id="sharePng">공유하기 (카톡)</button>
+    <button class="btn full" type="button" data-go="1">처음부터 다시</button>
+  </div>
+  <p class="note">점수는 ② 기준 화면에서 바꾸면 바로 다시 계산돼요.</p>`;
+}
+function drawRadar(){
+  if (!chartBase()) return;
+  const R = compute(state);
+  const cv = $('#radarChart'); if (!cv) return;
+  charts.push(new Chart(cv, {
+    type:'radar',
+    data:{ labels: CRIT.map(c=>c.label), datasets: R.ranked.map(x=>{ const col = carColor(x.car); return {
+      label: x.car.short||x.car.name, data: CRIT.map(c=>r1(x.s[c.k])), borderColor: col, backgroundColor: rgba(col,.16), pointBackgroundColor: col, borderWidth:2, pointRadius:3 }; }) },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10 } } },
+      scales:{ r:{ min:0, max:10, ticks:{ stepSize:2, display:false }, grid:{ color: cssVar('--line') }, angleLines:{ color: cssVar('--line') }, pointLabels:{ color: cssVar('--ink'), font:{ size:13, weight:'600' } } } } }
+  }));
+}
+
+/* ---------- 이미지 캡처 · 저장 · 공유 ---------- */
+let cardBlob = null, captureTimer = 0, capturing = null;
+function scheduleCapture(){
+  cardBlob = null; cardDirty = true;
+  clearTimeout(captureTimer);
+  captureTimer = setTimeout(()=>{ getCardBlob().catch(()=>{}); }, 700);
+}
+async function captureCard(){
+  const el = $('#shareCard'); if (!el || !window.html2canvas) return null;
+  try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch(e){}
+  const bg = getComputedStyle(el).backgroundColor;
+  const canvas = await html2canvas(el, {scale:2, backgroundColor:bg, useCORS:true, logging:false});
+  return await new Promise(res=>canvas.toBlob(res,'image/png'));
+}
+async function getCardBlob(){
+  if (cardBlob && !cardDirty) return cardBlob;
+  if (capturing) return capturing;
+  capturing = captureCard().then(b=>{ cardBlob = b; cardDirty = false; capturing = null; return b; }, e=>{ capturing = null; throw e; });
+  return capturing;
+}
+function fileName(ext){
+  const R = compute(state);
+  const d = new Date();
+  return `내차결정_${R.ranked.map(x=>x.car.short||x.car.name).slice(0,2).join('_vs_')}_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.${ext}`.replace(/[\\/:*?"<>|\s]+/g,'_');
+}
+let dlPromise = null;
+function getDownloads(){
+  if (!dlPromise) dlPromise = (window.claude && typeof window.claude.use === 'function') ? Promise.resolve(window.claude.use('downloads')).catch(()=>null) : Promise.resolve(null);
+  return dlPromise;
+}
+async function saveFile(name, blob, kind){
+  const dl = await getDownloads();
+  if (dl){
+    try { await dl.save({filename:name, data:blob}); return 'saved'; }
+    catch(e){
+      const code = e && e.code;
+      if (code === 'declined'){ toast('저장을 취소했어요'); return 'declined'; }
+      if (code === 'rate_limited'){ toast('잠시 후 다시 눌러 주세요'); return 'declined'; }
+    }
+  }
+  // 아티팩트 밖(파일을 직접 연 경우)에서는 일반 다운로드, 안 되면 길게 눌러 저장하는 화면
+  let started = false;
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 5000); started = !window.claude;
+  } catch(e){}
+  if (!started) showFallback(blob, kind);
+  return started ? 'saved' : 'fallback';
+}
+function showFallback(blob, kind){
+  if (kind === 'png'){
+    const url = URL.createObjectURL(blob);
+    openSheet(`<div class="sheet-head"><h2>이미지</h2><button class="btn sm" type="button" data-close>닫기</button></div>
+      <p class="note" style="margin:0">이미지를 길게 눌러 ‘사진에 저장’한 뒤 카톡에서 사진으로 보내 주세요.</p>
+      <img class="overlay-img" src="${url}" alt="결론 카드 이미지">`);
+  } else {
+    blob.text().then(t=>{
+      openSheet(`<div class="sheet-head"><h2>백업 내용</h2><button class="btn sm" type="button" data-close>닫기</button></div>
+        <p class="note" style="margin:0">파일 저장이 막혀 있어 내용을 보여 드려요. 전체를 복사해 메모 앱에 보관하세요.</p>
+        <textarea id="backupText" readonly style="min-height:220px;font-family:var(--f-num);font-size:12px">${esc(t)}</textarea>
+        <button class="btn primary" type="button" id="copyBackup">전체 복사</button>`);
+    });
+  }
+}
+async function onSavePng(){
+  const btn = $('#savePng'); btn.disabled = true; btn.textContent = '이미지 만드는 중…';
+  try {
+    const blob = await getCardBlob();
+    if (!blob) { toast('이미지를 만들지 못했어요. 다시 눌러 주세요.'); return; }
+    const r = await saveFile(fileName('png'), blob, 'png');
+    if (r === 'saved') toast('이미지를 저장했어요');
+  } catch(e){ toast('이미지를 만들지 못했어요. 다시 눌러 주세요.'); }
+  finally { btn.disabled = false; btn.textContent = '이미지 저장'; }
+}
+async function onShare(){
+  const btn = $('#sharePng'); btn.disabled = true; btn.textContent = '준비 중…';
+  try {
+    const blob = await getCardBlob();
+    if (!blob) { toast('이미지를 만들지 못했어요. 다시 눌러 주세요.'); return; }
+    const file = new File([blob], fileName('png'), {type:'image/png'});
+    if (navigator.canShare && navigator.share && navigator.canShare({files:[file]})){
+      try { await navigator.share({files:[file], title:'우리 집 차 결정'}); return; }
+      catch(e){ if (e && e.name === 'AbortError') return; }
+    }
+    const r = await saveFile(fileName('png'), blob, 'png');
+    if (r === 'saved') toast('저장한 이미지를 카톡에서 사진으로 보내 주세요', 4000);
+  } catch(e){ toast('공유를 준비하지 못했어요. 이미지 저장을 이용해 주세요.'); }
+  finally { btn.disabled = false; btn.textContent = '공유하기 (카톡)'; }
+}
+
+/* ---------- 시트 (차량 편집 · 설정) ---------- */
+function openSheet(html){
+  $('#sheetRoot').innerHTML = `<div class="scrim" data-scrim><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  document.body.style.overflow = 'hidden';
+  const first = $('#sheetRoot input, #sheetRoot textarea, #sheetRoot button'); if (first) first.focus({preventScroll:true});
+}
+function closeSheet(){ $('#sheetRoot').innerHTML = ''; document.body.style.overflow = ''; }
+
+let editing = null; // {index, draft}
+function openEditor(index){
+  const isNew = index < 0;
+  const used = state.cars.map(c=>c.color);
+  const draft = isNew
+    ? {id:'car'+Date.now(), name:'', short:'', year:'2026', color:[0,1,2,3].find(c=>!used.includes(c)) ?? 2, body:'SUV', price:0, discount:0, fuel:0, power:'', drive:'', powertrain:'', length:0, width:0, height:0, wheelbase:0, photo:'', pros:[], cons:[], scores:{design:7,durability:7,pref:7}}
+    : JSON.parse(JSON.stringify(state.cars[index]));
+  editing = {index, draft, confirmDel:false};
+  const d = draft;
+  const fld = (id,label,val,type='text',extra='') => `<label class="field"><span>${label}</span><input type="${type}" id="e_${id}" value="${esc(val)}" ${type==='number'?'inputmode="decimal" step="any"':''} ${extra}></label>`;
+  openSheet(`
+    <div class="sheet-head"><h2>${isNew ? '차종 추가' : esc(d.name)+' 수정'}</h2><button class="btn sm" type="button" data-close>닫기</button></div>
+    <div class="fields">
+      <div class="two">${fld('name','이름',d.name,'text','placeholder="예: Grandeur HEV" required')}${fld('short','짧은 이름 (결론 카드)',d.short,'text','placeholder="예: 그랜저"')}</div>
+      <div class="two">${fld('year','연식',d.year)}
+        <label class="field"><span>차체</span><select id="e_body"><option ${d.body==='세단'?'selected':''}>세단</option><option ${d.body==='SUV'?'selected':''}>SUV</option></select></label></div>
+      <div class="two">${fld('price','출고가 (만 원)',d.price,'number')}${fld('discount','분당 할인 (만 원)',d.discount,'number')}</div>
+      <div class="two">${fld('fuel','복합연비 (km/L)',d.fuel,'number')}${fld('power','시스템 출력',d.power)}</div>
+      <div class="two">${fld('powertrain','파워트레인',d.powertrain)}${fld('drive','구동방식',d.drive)}</div>
+      <div class="two">${fld('length','전장 (mm)',d.length,'number')}${fld('width','전폭 (mm)',d.width,'number')}</div>
+      <div class="two">${fld('height','전고 (mm)',d.height,'number')}${fld('wheelbase','휠베이스 (mm)',d.wheelbase,'number')}</div>
+      <div class="field"><span>사진</span>
+        <div class="photo-edit"><img id="e_preview" src="${esc(photoSrc(d))}" data-fallback="${esc(illusSrc(d))}" alt="미리보기">
+          <div class="row-btns"><button class="btn sm" type="button" id="e_upload">휴대폰 사진 올리기</button><button class="btn sm" type="button" id="e_clearPhoto">${OFFICIAL[d.id] ? '공식 사진으로' : '기본 그림으로'}</button></div></div>
+        <input type="url" id="e_photoUrl" placeholder="또는 사진 주소(URL)" value="${d.photo && !d.photo.startsWith('data:') ? esc(d.photo) : ''}">
+        <small>외부 주소 사진은 보안 정책 때문에 안 보일 수 있어요. 휴대폰 사진 올리기를 권해요 (자동으로 800px로 줄여 저장).</small>
+      </div>
+      <label class="field"><span>장점 <small>한 줄에 하나씩</small></span><textarea id="e_pros" rows="4">${esc(d.pros.join('\n'))}</textarea></label>
+      <label class="field"><span>단점 <small>한 줄에 하나씩</small></span><textarea id="e_cons" rows="4">${esc(d.cons.join('\n'))}</textarea></label>
+      <button class="btn primary wide" type="button" id="e_save">${isNew ? '추가하기' : '저장'}</button>
+      ${!isNew && state.cars.length > 2 ? '<button class="btn danger wide" type="button" id="e_delete">이 차 삭제</button>' : ''}
+    </div>`);
+}
+function readEditor(){
+  const d = editing.draft;
+  const g = id => $('#e_'+id).value;
+  d.name = g('name').trim(); d.short = g('short').trim(); d.year = g('year').trim(); d.body = g('body');
+  ['price','discount','fuel','length','width','height','wheelbase'].forEach(k=>d[k] = num(g(k)));
+  d.power = g('power').trim(); d.powertrain = g('powertrain').trim(); d.drive = g('drive').trim();
+  const url = g('photoUrl').trim(); if (url) d.photo = url; else if (d.photo && !d.photo.startsWith('data:')) d.photo = '';
+  d.pros = g('pros').split('\n').map(s=>s.trim()).filter(Boolean);
+  d.cons = g('cons').split('\n').map(s=>s.trim()).filter(Boolean);
+  return d;
+}
+function saveEditor(){
+  const d = readEditor();
+  if (!d.name){ toast('이름을 적어 주세요'); $('#e_name').focus(); return; }
+  if (!(d.fuel > 0)){ toast('복합연비를 적어 주세요'); $('#e_fuel').focus(); return; }
+  if (!(d.price > 0)){ toast('출고가를 적어 주세요'); $('#e_price').focus(); return; }
+  if (editing.index < 0) state.cars.push(d); else state.cars[editing.index] = d;
+  editing = null; closeSheet(); save(); render();
+  toast('저장했어요');
+}
+function resizePhoto(file){
+  return new Promise((res,rej)=>{
+    const fr = new FileReader();
+    fr.onload = ()=>{ const img = new Image(); img.onload = ()=>{
+      // 16:9로 가운데를 잘라 800×450으로 저장 (이미지 캡처 때 찌그러지지 않게)
+      const W = 800, H = 450, s = Math.max(W/img.width, H/img.height);
+      const sw = W/s, sh = H/s, sx = (img.width-sw)/2, sy = (img.height-sh)/2;
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      cv.getContext('2d').drawImage(img,sx,sy,sw,sh,0,0,W,H);
+      res(cv.toDataURL('image/jpeg',0.82));
+    }; img.onerror = rej; img.src = fr.result; };
+    fr.onerror = rej; fr.readAsDataURL(file);
+  });
+}
+
+function openSettings(){
+  openSheet(`
+    <div class="sheet-head"><h2>백업·설정</h2><button class="btn sm" type="button" data-close>닫기</button></div>
+    <p class="note" style="margin:0">입력한 내용은 이 휴대폰 브라우저에 자동 저장돼요. 브라우저 데이터를 지우면 사라지니 가끔 백업해 두세요.</p>
+    <button class="btn primary wide" type="button" id="doExport">백업 내보내기 (JSON 파일)</button>
+    <button class="btn wide" type="button" id="doImport">백업 불러오기</button>
+    <button class="btn danger wide" type="button" id="doReset">기본값으로 초기화</button>
+    <p class="note" id="resetHint" style="margin:0" hidden>한 번 더 누르면 모든 입력과 추가한 차가 기본값으로 돌아가요.</p>`);
+}
+
+/* ---------- 이벤트 ---------- */
+document.addEventListener('click', async e=>{
+  const t = e.target.closest('button, [data-scrim]');
+  if (!t) return;
+  if (t.matches('[data-scrim]')) { if (e.target === t) closeSheet(); return; }
+  if (t.dataset.go){ closeSheet(); go(+t.dataset.go); return; }
+  if (t.id === 'prev'){ go(state.step-1); return; }
+  if (t.id === 'next'){ go(state.step === 4 ? 1 : state.step+1); return; }
+  if (t.dataset.edit !== undefined){ openEditor(+t.dataset.edit); return; }
+  if (t.hasAttribute('data-add')){ openEditor(-1); return; }
+  if (t.hasAttribute('data-close')){ closeSheet(); return; }
+  if (t.id === 'openSettings'){ openSettings(); return; }
+  if (t.id === 'savePng'){ onSavePng(); return; }
+  if (t.id === 'sharePng'){ onShare(); return; }
+  if (t.id === 'e_save'){ saveEditor(); return; }
+  if (t.id === 'e_upload'){ $('#photoFile').click(); return; }
+  if (t.id === 'e_clearPhoto'){ editing.draft.photo = ''; $('#e_photoUrl').value=''; editing.draft.body = $('#e_body').value; $('#e_preview').src = photoSrc(editing.draft); return; }
+  if (t.id === 'e_delete'){
+    if (!editing.confirmDel){ editing.confirmDel = true; t.textContent = '정말 삭제할까요? 한 번 더 누르세요'; return; }
+    state.cars.splice(editing.index,1); editing = null; closeSheet(); save(); render(); toast('삭제했어요'); return;
+  }
+  if (t.id === 'doExport'){
+    const blob = new Blob([JSON.stringify({app:'car-decision-helper', exportedAt:new Date().toISOString(), state}, null, 2)], {type:'application/json'});
+    const r = await saveFile(fileName('json').replace('.json','_백업.json'), blob, 'json');
+    if (r === 'saved') toast('백업 파일을 저장했어요');
+    return;
+  }
+  if (t.id === 'doImport'){ $('#importFile').click(); return; }
+  if (t.id === 'doReset'){
+    if (!t.dataset.armed){ t.dataset.armed = '1'; t.textContent = '정말 초기화하기'; $('#resetHint').hidden = false; return; }
+    state = defaults(); closeSheet(); save(); render(); toast('기본값으로 되돌렸어요'); return;
+  }
+  if (t.id === 'copyBackup'){
+    const ta = $('#backupText');
+    try { await navigator.clipboard.writeText(ta.value); toast('복사했어요'); }
+    catch(err){ ta.focus(); ta.select(); toast('선택된 내용을 복사해 주세요'); }
+    return;
+  }
+});
+document.addEventListener('input', e=>{
+  const t = e.target;
+  if (t.dataset.w){ state.weights[t.dataset.w] = num(t.value); $('#wo_'+t.dataset.w).textContent = t.value+'%'; save(); refresh2(); return; }
+  if (t.dataset.score){ const i = +t.dataset.car; state.cars[i].scores[t.dataset.score] = num(t.value); $(`#so_${t.dataset.score}_${i}`).textContent = t.value; save(); refresh2(); return; }
+  if (t.dataset.memo){ state.memo[t.dataset.memo] = t.value; save(); return; }
+  if (t.dataset.km){ state.km[t.dataset.km] = Math.max(0,num(t.value)); save(); refresh3(); return; }
+  if (t.dataset.set){ const k = t.dataset.set; state[k] = k === 'region' ? t.value : num(t.value); save(); if (k !== 'region') refresh3(); return; }
+  if (t.name === 'delivery'){ state.delivery = t.value; save(); refresh3(); return; }
+  if (t.id === 'e_body' && editing && !editing.draft.photo){ editing.draft.body = t.value; $('#e_preview').src = photoSrc(editing.draft); }
+});
+document.addEventListener('change', e=>{
+  const t = e.target;
+  if (t.name === 'delivery'){ state.delivery = t.value; save(); refresh3(); }
+  if (t.id === 'e_body' && editing && !editing.draft.photo){ editing.draft.body = t.value; $('#e_preview').src = photoSrc(editing.draft); }
+});
+document.addEventListener('keydown', e=>{ if (e.key === 'Escape' && $('#sheetRoot').innerHTML) closeSheet(); });
+
+$('#photoFile').addEventListener('change', async e=>{
+  const f = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!f || !editing) return;
+  try { const url = await resizePhoto(f); editing.draft.photo = url; $('#e_photoUrl').value = ''; $('#e_preview').src = url; }
+  catch(err){ toast('사진을 읽지 못했어요. 다른 사진을 골라 주세요.'); }
+});
+$('#importFile').addEventListener('change', async e=>{
+  const f = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const obj = JSON.parse(await f.text());
+    const src = obj && obj.state ? obj.state : obj;
+    if (!src || !Array.isArray(src.cars) || src.cars.length < 2) throw new Error('bad');
+    state = merge(defaults(), src); state.step = 1;
+    closeSheet(); save(); render(); toast('백업을 불러왔어요');
+  } catch(err){ toast('이 앱의 백업 파일이 아니에요. 내보내기로 만든 JSON 파일을 골라 주세요.', 3600); }
+});
+
+const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+const rerenderCharts = ()=>{ if (state.step === 3) refresh3(); if (state.step === 4){ killCharts(); drawRadar(); scheduleCapture(); } };
+if (mq && mq.addEventListener) mq.addEventListener('change', rerenderCharts);
+new MutationObserver(rerenderCharts).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+
+/* 테스트용 노출 */
+window.__carDecision = { compute: ()=>compute(state), defaults, reasons };
+
+render();
+getDownloads();
+rasterizeAll().then(()=>{ if (!$('#sheetRoot').innerHTML) render(); });
+})();
+</script>
