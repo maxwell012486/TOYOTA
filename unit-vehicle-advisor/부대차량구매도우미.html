@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>부대 차량 구매 도우미</title>
+<link rel="icon" href="data:,">
+<!--
+  부대 차량 구매 도우미 v1.0 (MVP)
+  - 파일 하나로 동작한다. 외부 요청(CDN, 글꼴, API) 없음. 데이터는 이 PC 브라우저의 localStorage에만 저장한다.
+  - 비밀 정보는 입력하지 않는다.
+-->
+<style>
+:root{
+  --ink:#1c2430; --muted:#5a6473; --line:#d5dae2; --bg:#eef1ee; --panel:#fff;
+  --brand:#3d5a3a; --brand-dark:#2b4229; --brand-soft:#e4ece2;
+  --green:#1d6b37; --green-bg:#dff1e4; --yellow:#7a5600; --yellow-bg:#fff1c2; --red:#a8231b; --red-bg:#fbe2df;
+  --warn:#b3261e;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:var(--ink);background:var(--bg);min-width:1280px;font-size:14px;line-height:1.5}
+button,input,select,textarea{font-family:inherit;font-size:14px;color:inherit}
+button{cursor:pointer;border:1px solid var(--brand);background:#fff;color:var(--brand-dark);border-radius:6px;padding:7px 14px;font-weight:600}
+button:hover{background:var(--brand-soft)}
+button.primary{background:var(--brand);color:#fff}
+button.primary:hover{background:var(--brand-dark)}
+button.danger{border-color:var(--red);color:var(--red)}
+button.small{padding:3px 9px;font-size:13px}
+input[type=text],input[type=number],select,textarea{border:1px solid #b9c0ca;border-radius:5px;padding:6px 8px;background:#fff}
+input[type=number]{text-align:right}
+input:focus,select:focus,textarea:focus{outline:2px solid #7d9c79;outline-offset:0}
+h2{margin:0 0 4px;font-size:22px}
+h3{margin:0 0 10px;font-size:16px}
+.sub{color:var(--muted);margin:0 0 18px}
+
+/* 왼쪽 메뉴 */
+.side{position:fixed;left:0;top:0;bottom:0;width:230px;background:var(--brand-dark);color:#fff;display:flex;flex-direction:column;z-index:10}
+.side .logo{padding:20px 18px 16px;font-size:17px;font-weight:700;border-bottom:1px solid rgba(255,255,255,.15)}
+.side .logo small{display:block;font-size:12px;font-weight:400;opacity:.75;margin-top:2px}
+.side nav{flex:1;padding:10px 0}
+.side nav a{display:flex;gap:10px;align-items:center;padding:12px 18px;color:#dfe8dc;text-decoration:none;font-weight:600;border-left:4px solid transparent;cursor:pointer}
+.side nav a .no{display:inline-flex;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.15);align-items:center;justify-content:center;font-size:12px}
+.side nav a:hover{background:rgba(255,255,255,.08)}
+.side nav a.on{background:rgba(255,255,255,.14);border-left-color:#e9d27a;color:#fff}
+.side .secret{margin:12px;padding:12px;border:2px solid #f0c24b;border-radius:8px;background:#5a2a1c;color:#fff;font-size:13px;line-height:1.45}
+.side .secret b{display:block;font-size:15px;color:#ffd75e;margin-bottom:4px}
+
+/* 상단 */
+.main{margin-left:230px;min-height:100vh}
+.topbar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:22px;padding:10px 28px}
+.topbar .unit{font-size:17px;font-weight:700}
+.topbar .meta{color:var(--muted);font-size:13px}
+.topbar .grow{flex:1}
+.topbar .backup.old{color:var(--warn);font-weight:700}
+.content{padding:24px 28px 60px;max-width:1500px}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid-main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.field label,.lbl{font-weight:600;font-size:13px;color:#39424f}
+.field .hint{font-size:12px;color:var(--muted)}
+.inline-fields{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.check{display:flex;align-items:center;gap:8px;padding:6px 0}
+.check input{width:18px;height:18px}
+.unitlbl{color:var(--muted);font-size:13px}
+.alert{border-radius:8px;padding:10px 14px;margin-bottom:14px;font-weight:600}
+.alert.warn{background:var(--red-bg);color:var(--red);border:1px solid #efb3ad}
+.alert.info{background:#eef3fb;color:#24456e;border:1px solid #c6d5ec}
+.alert.caution{background:var(--yellow-bg);color:var(--yellow);border:1px solid #ecd47f}
+
+table{border-collapse:collapse;width:100%}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:middle}
+th{background:#f4f6f3;font-size:13px;color:#39424f;white-space:nowrap}
+td.num,th.num{text-align:right}
+tr.off td{color:#9aa1ab}
+.tbl-wrap{overflow-x:auto}
+
+/* 태그: 색 + 글자 (흑백에서도 읽히도록 테두리와 기호 포함) */
+.tag{display:inline-block;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:700;margin:1px 3px 1px 0;border:1px solid;white-space:nowrap}
+.tag.green{background:var(--green-bg);color:var(--green);border-color:#9fd0ae}
+.tag.green::before{content:"○ "}
+.tag.yellow{background:var(--yellow-bg);color:var(--yellow);border-color:#e3c86a}
+.tag.yellow::before{content:"△ "}
+.tag.red{background:var(--red-bg);color:var(--red);border-color:#e9a29b}
+.tag.red::before{content:"✕ "}
+.tag.gray{background:#eef0f3;color:#4b5563;border-color:#c9ced6}
+
+/* 용도 카드 */
+.purpose-cards{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.pcard{border:2px solid var(--line);border-radius:10px;background:#fff;padding:12px 10px 10px;text-align:center;cursor:pointer;color:#55606e;font-weight:700}
+.pcard svg{width:100%;height:70px;display:block;margin-bottom:6px}
+.pcard small{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.pcard:hover{border-color:#94ac90}
+.pcard.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand-dark);box-shadow:0 0 0 3px rgba(61,90,58,.18)}
+.pcard.on::after{content:"✔ 선택됨";display:block;font-size:12px;margin-top:4px;color:var(--brand)}
+
+/* 막대 */
+.bar{position:relative;height:16px;background:#eceff2;border:1px solid #b9c0ca;border-radius:3px;overflow:hidden;min-width:120px}
+.bar > i{position:absolute;left:0;top:0;bottom:0;background:var(--brand)}
+.bar > i.pen{background:repeating-linear-gradient(45deg,#a8231b 0 3px,#f5d0cc 3px 6px)}
+.bar.big{height:22px}
+.score{font-weight:700;font-variant-numeric:tabular-nums}
+.stack{display:flex;height:28px;border:1px solid #8a929d;border-radius:4px;overflow:hidden;background:#f2f4f6}
+.stack > div{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;border-right:1px solid #fff;white-space:nowrap;overflow:hidden}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px;font-size:13px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{display:inline-block;width:14px;height:14px;border:1px solid #555}
+.pat0{background:#2b4229}.pat1{background:#4f7a4a}.pat2{background:repeating-linear-gradient(45deg,#4f7a4a 0 4px,#9cbc97 4px 8px)}
+.pat3{background:#8a6d1f}.pat4{background:repeating-linear-gradient(45deg,#8a6d1f 0 4px,#d6c08a 4px 8px)}
+
+.breakdown{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.bd{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.bd .t{font-weight:700;margin-bottom:6px}
+.bd .r{display:grid;grid-template-columns:72px 1fr 34px;gap:8px;align-items:center;font-size:12px;margin:3px 0}
+.bd .bar{height:11px;min-width:0}
+
+.reasons{margin:0;padding-left:22px}
+.reasons li{margin:4px 0}
+.close-note{display:inline-block;background:var(--yellow-bg);border:1px solid #e3c86a;color:var(--yellow);font-weight:700;padding:3px 10px;border-radius:5px;margin-bottom:8px}
+.ref h4{margin:12px 0 6px;font-size:14px}
+.ref .empty,.empty{color:var(--muted);font-size:13px}
+.ref ul{margin:0;padding-left:18px;font-size:13px}
+.live{background:#f7f9f6;border:1px dashed #94ac90;border-radius:8px;padding:10px 14px}
+.weights .w{display:grid;grid-template-columns:110px 1fr 60px;gap:10px;align-items:center;margin:6px 0}
+.weights input[type=range]{width:100%}
+.sum{font-weight:700}
+.sum.bad{color:var(--warn)}
+.toast{position:fixed;right:24px;bottom:24px;background:#1c2430;color:#fff;padding:12px 18px;border-radius:8px;font-weight:600;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;max-width:460px}
+.toast.show{opacity:1}
+.tight td,.tight th{padding:4px 5px}
+.tight input,.tight select{padding:3px 5px;font-size:13px}
+.mono{font-family:Consolas,"Malgun Gothic",monospace}
+
+/* 보고서 (A4 세로) */
+.report-tools{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+.sheet{width:210mm;min-height:297mm;background:#fff;margin:0 auto 18px;padding:16mm 15mm;box-shadow:0 2px 10px rgba(0,0,0,.15);color:#000;font-size:10.5pt;line-height:1.55}
+.sheet h1{font-size:17pt;text-align:center;margin:0 0 4mm;letter-spacing:-.5px}
+.sheet .stamp{text-align:right;font-size:9.5pt;margin-bottom:5mm}
+.sheet h5{font-size:11.5pt;margin:5mm 0 2mm;border-bottom:1.5px solid #000;padding-bottom:1mm}
+.sheet table{font-size:9.5pt}
+.sheet th,.sheet td{border:1px solid #555;padding:3px 5px}
+.sheet th{background:#e6e6e6;color:#000}
+.sheet .bar{border-color:#333;background:#fff;height:12px;min-width:60px}
+.sheet .bar > i{background:#333}
+.sheet ol,.sheet ul{margin:1mm 0;padding-left:6mm}
+.sheet .foot{margin-top:6mm;border-top:1px solid #000;padding-top:2mm;font-size:8.5pt;color:#222}
+.sheet .tag{border-color:#333;color:#000;background:#fff}
+.sheet .close-note{border-color:#333;color:#000;background:#fff}
+textarea.copytext{width:100%;height:340px;font-size:13px;line-height:1.55;white-space:pre}
+
+@media print{
+  @page{size:A4 portrait;margin:0}
+  body{background:#fff;min-width:0}
+  .side,.topbar,.no-print,.toast{display:none !important}
+  .main{margin:0}
+  .content{padding:0;max-width:none}
+  .sheet{box-shadow:none;margin:0;width:210mm;min-height:auto}
+  .sheet tr,.sheet li{break-inside:avoid}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="logo">부대 차량 구매 도우미<small>v1.0 · 국산 차량 · 오프라인</small></div>
+  <nav id="nav"></nav>
+  <div class="secret"><b>⚠ 비밀 정보 입력 금지</b>공개 가능한 부대 명칭과 일반 정보만 입력하세요. 이 파일은 외부로 아무것도 보내지 않으며, 데이터는 이 PC 브라우저에만 저장됩니다.</div>
+</aside>
+<div class="main">
+  <header class="topbar">
+    <div class="unit" id="tbUnit"></div>
+    <div class="meta" id="tbSaved"></div>
+    <div class="grow"></div>
+    <div class="meta backup" id="tbBackup"></div>
+    <button class="primary" onclick="exportAll()">JSON 백업</button>
+  </header>
+  <div class="content" id="view"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const SCHEMA_VERSION = 1;
+const STORE_KEY = 'unitVehicleAdvisor';
+
+const SCREENS = [
+  {id:'profile', label:'부대 프로필'},
+  {id:'cond', label:'구매 조건·후보'},
+  {id:'rank', label:'순위·분석'},
+  {id:'report', label:'보고서'},
+  {id:'records', label:'기록 관리'},
+];
+const PURPOSES = [
+  {id:'sedan', label:'승용', desc:'지휘관 업무용', report:'지휘관 업무용 승용차'},
+  {id:'van', label:'승합', desc:'인원 수송', report:'인원 수송용 승합차'},
+  {id:'truck1', label:'1톤 화물', desc:'보급·물자', report:'보급·물자 수송용 1톤 화물차'},
+  {id:'truckL', label:'대형 트럭', desc:'중·대형 수송', report:'대형 트럭'},
+  {id:'etc', label:'기타', desc:'픽업 등 직접 추가', report:'기타 차량'},
+];
+const CLASSES = ['승용','승합','화물'];
+const FUELS = ['전기','수소','하이브리드','LPG','가솔린','디젤'];
+const ECO_SCORE = {전기:10, 수소:10, 하이브리드:8, LPG:6, 가솔린:4, 디젤:3};
+const ENERGY_OF = {가솔린:'gasoline', 하이브리드:'gasoline', 디젤:'diesel', LPG:'lpg', 전기:'elec', 수소:'h2'};
+const LICENSES = [
+  {id:'l1big', label:'1종 대형'},
+  {id:'l1', label:'1종 보통'},
+  {id:'l1auto', label:'1종 보통(자동 한정)'},
+  {id:'l2', label:'2종 보통'},
+  {id:'l2auto', label:'2종 보통(자동 한정)'},
+];
+const CRITERIA = [
+  {id:'fit', label:'용도 적합성'},
+  {id:'budget', label:'예산'},
+  {id:'maint', label:'유지비'},
+  {id:'eco', label:'친환경'},
+  {id:'conv', label:'운전 편의'},
+];
+const DEFAULT_WEIGHTS = {fit:30, budget:25, maint:20, eco:15, conv:10};
+const PENALTY_LICENSE = 15, PENALTY_INFRA = 5, USED_MAINT_RATE = 1.3, CLOSE_GAP = 3;
+
+// 도로교통법 시행규칙 별표 18 기준 (PRD 7.3). vanMax/truckMax가 null이면 제한 없음(전체)
+const DEFAULT_LICENSE_RULES = [
+  {id:'l1big', sedan:true, vanMax:null, truckMax:null, truckInclusive:true, manual:true},
+  {id:'l1', sedan:true, vanMax:15, truckMax:12, truckInclusive:false, manual:true},
+  {id:'l1auto', sedan:true, vanMax:15, truckMax:12, truckInclusive:false, manual:false},
+  {id:'l2', sedan:true, vanMax:10, truckMax:4, truckInclusive:true, manual:true},
+  {id:'l2auto', sedan:true, vanMax:10, truckMax:4, truckInclusive:true, manual:false},
+];
+
+// 에너지 단가 기본값 (PRD 7.4). 휘발유 외에는 추정값이므로 오피넷·환경부 최신값으로 고쳐 쓴다
+const DEFAULT_ENERGY = {
+  gasoline:{label:'휘발유 (가솔린·하이브리드)', unit:'원/L', price:1858, note:'2026년 10월 전국 평균 (PRD 기준값)'},
+  diesel:{label:'경유', unit:'원/L', price:1750, note:'추정값 — 오피넷 최신 전국 평균으로 수정'},
+  lpg:{label:'LPG (자동차용 부탄)', unit:'원/L', price:1100, note:'추정값 — 오피넷 최신 전국 평균으로 수정'},
+  elec:{label:'전기 (급속 충전)', unit:'원/kWh', price:347.2, note:'추정값 — 환경부 공공 급속(50kW) 요금 기준, 최신 요금으로 수정'},
+  h2:{label:'수소', unit:'원/kg', price:9900, note:'추정값 — 충전소 판매가 평균, 최신값으로 수정'},
+};
+
+// 사전 탑재 국산 차량 제원 (가격 제외). verified=false 는 제조사 공식 제원표 대조가 필요한 값
+const SPEC_NOTE = '연비·정비비는 추정값. 제조사 공식 제원표로 확인 필요';
+function V(id,use,maker,model,trim,cls,fuel,trans,drive,seats,payload,eff,maint,note){
+  return {id,use,maker,model,trim,cls,fuel,trans,drive,seats,payload,eff,maint,verified:false,note:note||SPEC_NOTE};
+}
+const DEFAULT_VEHICLES = [
+  V('sonata-g','sedan','현대','쏘나타 디 엣지','2.0 가솔린','승용','가솔린','자동','2WD',5,0,12.6,60),
+  V('sonata-h','sedan','현대','쏘나타 디 엣지','2.0 하이브리드','승용','하이브리드','자동','2WD',5,0,19.4,55),
+  V('sonata-l','sedan','현대','쏘나타 디 엣지','2.0 LPi','승용','LPG','자동','2WD',5,0,9.6,60),
+  V('k5-g','sedan','기아','K5','2.0 가솔린','승용','가솔린','자동','2WD',5,0,13.0,60),
+  V('k5-h','sedan','기아','K5','2.0 하이브리드','승용','하이브리드','자동','2WD',5,0,19.8,55),
+  V('k5-l','sedan','기아','K5','2.0 LPi','승용','LPG','자동','2WD',5,0,10.0,60),
+  V('grandeur-g','sedan','현대','그랜저','2.5 가솔린','승용','가솔린','자동','2WD',5,0,11.7,70),
+  V('grandeur-h','sedan','현대','그랜저','1.6 터보 하이브리드','승용','하이브리드','자동','2WD',5,0,18.0,65),
+  V('grandeur-l','sedan','현대','그랜저','3.5 LPi','승용','LPG','자동','2WD',5,0,7.4,70),
+  V('k8-g','sedan','기아','K8','2.5 가솔린','승용','가솔린','자동','2WD',5,0,11.8,70),
+  V('k8-h','sedan','기아','K8','1.6 터보 하이브리드','승용','하이브리드','자동','2WD',5,0,18.1,65),
+  V('k8-l','sedan','기아','K8','3.5 LPi','승용','LPG','자동','2WD',5,0,7.5,70),
+  V('ioniq6','sedan','현대','아이오닉 6','롱레인지 2WD','승용','전기','자동','2WD',5,0,6.0,40),
+
+  V('staria9-d','van','현대','스타리아 투어러','9인승 2.2 디젤','승합','디젤','자동','2WD',9,0,10.8,90),
+  V('staria9-l','van','현대','스타리아 투어러','9인승 3.5 LPi','승합','LPG','자동','2WD',9,0,7.0,85),
+  V('staria9-h','van','현대','스타리아 투어러','9인승 1.6 터보 하이브리드','승합','하이브리드','자동','2WD',9,0,13.0,80),
+  V('staria11-d','van','현대','스타리아 투어러','11인승 2.2 디젤','승합','디젤','자동','2WD',11,0,10.8,90),
+  V('staria11-l','van','현대','스타리아 투어러','11인승 3.5 LPi','승합','LPG','자동','2WD',11,0,7.0,85),
+  V('solati15','van','현대','쏠라티','15인승 2.5 디젤','승합','디젤','수동','2WD',15,0,9.0,120),
+  V('county-dm','van','현대','카운티','25인승 3.9 디젤','승합','디젤','수동','2WD',25,0,7.0,180),
+  V('county-da','van','현대','카운티','25인승 3.9 디젤','승합','디젤','자동','2WD',25,0,6.8,180),
+  V('county-ev','van','현대','카운티 일렉트릭','장축','승합','전기','자동','2WD',33,0,1.9,120,'승차정원은 트림별로 다름. 연비·정비비 추정값. 공식 제원표로 확인 필요'),
+
+  V('porter-lm','truck1','현대','포터 II','LPG 2.5 터보 슈퍼캡 초장축','화물','LPG','수동','2WD',3,1.0,7.8,80),
+  V('porter-la','truck1','현대','포터 II','LPG 2.5 터보 슈퍼캡 초장축','화물','LPG','자동','2WD',3,1.0,7.0,80),
+  V('porter-ev','truck1','현대','포터 II 일렉트릭','슈퍼캡 초장축','화물','전기','자동','2WD',3,1.0,3.1,50),
+  V('bongo-lm','truck1','기아','봉고 III','LPG 2.5 터보 킹캡 초장축','화물','LPG','수동','2WD',3,1.0,7.6,80),
+  V('bongo-la','truck1','기아','봉고 III','LPG 2.5 터보 킹캡 초장축','화물','LPG','자동','2WD',3,1.0,7.0,80),
+  V('bongo-ev','truck1','기아','봉고 III EV','킹캡 초장축','화물','전기','자동','2WD',3,1.0,3.1,50),
+
+  V('mighty-m','truckL','현대','마이티','3.5톤 카고 3.9 디젤','화물','디젤','수동','2WD',3,3.5,7.5,150),
+  V('mighty-a','truckL','현대','마이티','3.5톤 카고 3.9 디젤','화물','디젤','자동','2WD',3,3.5,7.2,150),
+  V('pavise','truckL','현대','파비스','5톤 카고 디젤','화물','디젤','자동','2WD',3,5.0,5.0,200),
+  V('xcient-d','truckL','현대','엑시언트','25톤 카고 디젤','화물','디젤','자동','2WD',2,25,3.3,350),
+  V('xcient-h','truckL','현대','엑시언트 수소전기트럭','카고','화물','수소','자동','2WD',2,11,13.0,300,'적재중량·연비·정비비 추정값. 공식 제원표로 확인 필요'),
+  V('tata-the','truckL','타타대우','더쎈','5톤 카고 디젤','화물','디젤','수동','2WD',3,5.0,6.0,170),
+  V('tata-gu','truckL','타타대우','구쎈','8톤 카고 디젤','화물','디젤','자동','2WD',3,8.0,4.8,220),
+  V('tata-max','truckL','타타대우','맥쎈','25톤 카고 디젤','화물','디젤','자동','2WD',2,25,3.2,350),
+
+  V('rexton-sp','etc','KGM','렉스턴 스포츠','2.2 디젤 4WD (픽업)','화물','디젤','자동','4WD',5,0.4,10.1,80),
+];
+
+const clone = o => JSON.parse(JSON.stringify(o));
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { const n = parseFloat(v); return isFinite(n) ? n : 0; };
+const fmt = (n, d=0) => Number(n || 0).toLocaleString('ko-KR', {minimumFractionDigits:d, maximumFractionDigits:d});
+const uid = p => p + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const purposeOf = id => PURPOSES.find(p => p.id === id) || PURPOSES[0];
+const effUnit = fuel => fuel === '전기' ? 'km/kWh' : fuel === '수소' ? 'km/kg' : 'km/L';
+const today = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`; };
+// 받침 유무에 따라 '은/는'을 붙인다
+const topic = w => { const c = w.charCodeAt(w.length - 1) - 0xAC00; return w + (c >= 0 && c < 11172 && c % 28 ? '은' : '는'); };
+const GANADA = '가나다라마바사아자차카타파하';
+
+function defaultState(){
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    profile:{name:'', totalBudget:0, licenses:{l1big:0,l1:0,l1auto:0,l2:0,l2auto:0},
+      env:{paved:true, unpaved:false, mountain:false, cold:false}, evCharger:false, h2Access:false, annualKm:15000},
+    cond:{purpose:'sedan', qty:1, perUnitBudget:0, perUnitOverride:false, seats:0, payload:0, drivers:2, newUsed:'both'},
+    weights: clone(DEFAULT_WEIGHTS),
+    prices:{}, excluded:{}, used:[],
+    vehicles: clone(DEFAULT_VEHICLES),
+    licenseRules: clone(DEFAULT_LICENSE_RULES),
+    energy: clone(DEFAULT_ENERGY),
+    cases:[], plans:[], history:[],
+    meta:{lastSaved:null, lastBackup:null},
+  };
+}
+
+// 저장 데이터에 빠진 항목은 기본값으로 채운다 (이전 버전·일부 손상 대비)
+function normalize(d){
+  const s = defaultState();
+  if (!d || typeof d !== 'object') return s;
+  const obj = (a, b) => (b && typeof b === 'object' && !Array.isArray(b)) ? Object.assign(a, b) : a;
+  obj(s.profile, d.profile);
+  s.profile.licenses = obj(defaultState().profile.licenses, d.profile && d.profile.licenses);
+  s.profile.env = obj(defaultState().profile.env, d.profile && d.profile.env);
+  obj(s.cond, d.cond);
+  obj(s.weights, d.weights);
+  obj(s.prices, d.prices);
+  obj(s.excluded, d.excluded);
+  for (const k of ['used','vehicles','licenseRules','cases','plans','history']) if (Array.isArray(d[k])) s[k] = d[k];
+  if (d.energy && typeof d.energy === 'object') for (const k of Object.keys(s.energy)) if (d.energy[k]) Object.assign(s.energy[k], d.energy[k]);
+  obj(s.meta, d.meta);
+  s.schemaVersion = SCHEMA_VERSION;
+  return s;
+}
+
+let state = load();
+let screen = 'profile';
+
+function load(){
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) return normalize(JSON.parse(raw));
+  } catch (e) { console.warn('저장 데이터를 읽지 못해 기본값으로 시작합니다', e); }
+  return defaultState();
+}
+function save(){
+  state.meta.lastSaved = new Date().toISOString();
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch (e) { toast('브라우저 저장에 실패했습니다. JSON 백업으로 보관하세요.'); }
+  updateTopbar();
+}
+
+/* ---------------- 평가 엔진 (PRD 8장) ---------------- */
+function perUnitBudget(){
+  const c = state.cond;
+  if (c.perUnitOverride) return num(c.perUnitBudget);
+  return c.qty > 0 ? Math.round(num(state.profile.totalBudget) / num(c.qty)) : 0;
+}
+function totalDrivers(){ return LICENSES.reduce((a, l) => a + num(state.profile.licenses[l.id]), 0); }
+function ruleAllows(r, v){
+  let ok;
+  if (v.cls === '승용') ok = !!r.sedan;
+  else if (v.cls === '승합') ok = r.vanMax == null || r.vanMax === '' || num(v.seats) <= num(r.vanMax);
+  else ok = r.truckMax == null || r.truckMax === '' || (r.truckInclusive ? num(v.payload) <= num(r.truckMax) : num(v.payload) < num(r.truckMax));
+  if (v.trans === '수동' && !r.manual) ok = false;
+  return ok;
+}
+function driversFor(v){
+  return state.licenseRules.reduce((a, r) => a + (ruleAllows(r, v) ? num(state.profile.licenses[r.id]) : 0), 0);
+}
+function vehName(v){ return `${v.maker} ${v.model} ${v.trim}`.trim(); }
+function vehSpec(v){ return `${v.fuel}·${v.trans}${v.drive === '4WD' ? '·4WD' : ''}`; }
+
+// 선택한 용도의 후보 목록 (신차 + 중고)
+function candidates(){
+  const c = state.cond, out = [];
+  if (c.newUsed !== 'used') for (const v of state.vehicles) if (v.use === c.purpose)
+    out.push({key:v.id, veh:v, used:null, name:vehName(v), price:num(state.prices[v.id]), excluded:!!state.excluded[v.id]});
+  if (c.newUsed !== 'new') for (const u of state.used) {
+    const v = state.vehicles.find(x => x.id === u.baseId);
+    if (!v || v.use !== c.purpose) continue;
+    out.push({key:'u:'+u.id, veh:v, used:u, name:`${vehName(v)} (중고 ${u.year}년식)`, price:num(u.price), excluded:!!state.excluded['u:'+u.id]});
+  }
+  return out;
+}
+
+function evaluate(){
+  const s = state, c = s.cond, p = s.profile, w = s.weights;
+  const budget = perUnitBudget();
+  const all = candidates();
+  const list = all.filter(x => !x.excluded && x.price > 0);
+  const nowYear = new Date().getFullYear();
+  for (const x of list) {
+    const v = x.veh;
+    const sc = {};
+    // 용도 적합성
+    const seatS = num(c.seats) > 0 ? 10 * Math.min(1, num(v.seats) / num(c.seats)) : 10;
+    const loadS = num(c.payload) > 0 ? 10 * Math.min(1, num(v.payload) / num(c.payload)) : 10;
+    sc.fit = Math.min(seatS, loadS);
+    // 예산: 1% 초과마다 1점 감점
+    x.overPct = budget > 0 ? (x.price - budget) / budget * 100 : 0;
+    sc.budget = (budget <= 0 || x.price <= budget) ? 10 : Math.max(0, 10 - x.overPct);
+    // 유지비 (만 원)
+    const e = s.energy[ENERGY_OF[v.fuel]];
+    const energyYear = num(v.eff) > 0 ? num(p.annualKm) / num(v.eff) * num(e && e.price) / 10000 : 0;
+    x.maintYear = num(v.maint) * (x.used ? USED_MAINT_RATE : 1);
+    x.cost5 = (energyYear + x.maintYear) * 5;
+    x.energyYear = energyYear;
+    sc.eco = ECO_SCORE[v.fuel] ?? 0;
+    sc.conv = v.trans === '수동' ? 5 : 10;
+    x.sc = sc;
+    x.drivers = driversFor(v);
+    x.licenseBad = x.drivers < num(c.drivers);
+    x.infraBad = (v.fuel === '전기' && !p.evCharger) || (v.fuel === '수소' && !p.h2Access);
+    x.budgetBad = budget > 0 && x.price > budget;
+    x.age = x.used ? Math.max(0, nowYear - num(x.used.year)) : 0;
+  }
+  const minCost = Math.min(...list.map(x => x.cost5).filter(v => v > 0));
+  for (const x of list) {
+    x.sc.maint = x.cost5 > 0 && isFinite(minCost) ? 10 * minCost / x.cost5 : 10;
+    x.total = CRITERIA.reduce((a, k) => a + x.sc[k.id] * num(w[k.id]) / 100, 0) * 10;
+    x.penalty = (x.licenseBad ? PENALTY_LICENSE : 0) + (x.infraBad ? PENALTY_INFRA : 0);
+    x.final = Math.max(0, x.total - x.penalty);
+    x.tags = tagsFor(x, budget);
+    x.limits = limitsFor(x, budget);
+  }
+  list.sort((a, b) => b.final - a.final || b.total - a.total);
+  list.forEach((x, i) => x.rank = i + 1);
+  const weightSum = CRITERIA.reduce((a, k) => a + num(w[k.id]), 0);
+  return {list, all, budget, weightSum, reasons: reasonsFor(list, budget), unpriced: all.filter(x => !x.excluded && !(x.price > 0))};
+}
+
+function tagsFor(x, budget){
+  const v = x.veh, env = state.profile.env, t = [];
+  t.push(x.licenseBad ? {lv:'red', text:'면허 부적합'} : {lv:'green', text:'면허 적합'});
+  if (budget > 0) t.push(x.budgetBad ? {lv:'red', text:'예산 초과'} : {lv:'green', text:'예산 이내'});
+  if (x.infraBad) t.push({lv:'yellow', text:'충전 인프라 부족'});
+  if (v.fuel === '전기' && env.cold) t.push({lv:'yellow', text:'동절기 주행거리 감소 주의'});
+  if (v.drive === '2WD' && (env.unpaved || env.mountain)) t.push({lv:'yellow', text:'험로 운행 주의'});
+  if (x.used) t.push({lv:'yellow', text:`중고 연식 ${x.age}년, 주행 ${fmt(x.used.km)}km`});
+  return t;
+}
+
+// 제한사항과 대책 (PRD 8.6)
+function limitsFor(x, budget){
+  const v = x.veh, env = state.profile.env, c = state.cond, L = [];
+  if (x.licenseBad) L.push({text:`면허 부적합 — 운전 가능 인원 ${x.drivers}명 (필요 ${num(c.drivers)}명)${v.trans === '수동' ? ', 수동변속기는 자동 한정 면허 운전 불가' : ''} [−${PENALTY_LICENSE}점]`,
+    measure:'자동변속기 트림 선택 또는 운전 인원 면허 취득 교육 계획 반영'});
+  if (x.budgetBad) {
+    const per = x.price - budget, qty = Math.max(1, num(c.qty));
+    L.push({text:`예산 초과 — 대당 ${fmt(per)}만 원 초과 (${fmt(x.overPct,1)}%)`,
+      measure:`하위 트림 검토 또는 예산 ${fmt(per * qty)}만 원 증액 소요 반영${qty > 1 ? ` (대당 ${fmt(per)}만 원 × ${qty}대)` : ''}`});
+  }
+  if (x.infraBad) L.push({text:`충전 인프라 부족 — ${v.fuel === '수소' ? '수소 충전소 접근 불가' : '전기 충전기 없음'} [−${PENALTY_INFRA}점]`,
+    measure:'충전기 설치 소요 및 예산 반영 필요'});
+  if (v.fuel === '전기' && env.cold) L.push({text:'혹한지 전기차 — 동절기 주행거리 감소', measure:'동절기 운행 거리 여유 확보 및 실내 주차 검토'});
+  if (v.drive === '2WD' && (env.unpaved || env.mountain)) L.push({text:`험로 2WD — ${[env.unpaved && '비포장', env.mountain && '산악 지형'].filter(Boolean).join('·')} 운행 환경`,
+    measure:'4WD 트림 검토 또는 험로 운행 제한'});
+  if (x.used) L.push({text:`중고차 — 연식 ${x.age}년, 주행 ${fmt(x.used.km)}km (정비비 +30% 반영)`, measure:'정비 이력 확인 및 잔여 보증 기간 확인'});
+  return L;
+}
+
+// 1순위 선정 사유 (PRD 8.5)
+function reasonsFor(list, budget){
+  if (!list.length) return {lines:[], close:false};
+  const a = list[0], b = list[1], c = state.cond, w = state.weights;
+  const fitText = () => {
+    const parts = [];
+    if (num(c.seats) > 0) parts.push(`필요 승차 인원 ${num(c.seats)}명`);
+    if (num(c.payload) > 0) parts.push(`적재량 ${num(c.payload)}톤`);
+    if (a.sc.fit >= 10) return parts.length ? `${parts.join(', ')}을 모두 충족함` : '용도 조건을 모두 충족함';
+    return `용도 적합성 ${fmt(a.sc.fit,1)}점으로 2순위(${fmt(b ? b.sc.fit : 0,1)}점)보다 높음 (승차정원 ${a.veh.seats}명${num(a.veh.payload) ? `, 적재 ${a.veh.payload}톤` : ''})`;
+  };
+  const tpl = {
+    fit: fitText,
+    budget: () => (budget > 0 && a.price <= budget)
+      ? `대당 예산 대비 ${fmt(budget - a.price)}만 원 절감 (예산 집행률 ${fmt(a.price / budget * 100, 1)}%)`
+      : `예산 초과 폭이 2순위보다 작음 (대당 ${fmt(a.price - budget)}만 원 초과)`,
+    maint: () => b ? `5년 유지비가 2순위 대비 ${fmt(b.cost5 - a.cost5)}만 원 적음 (대당 5년 ${fmt(a.cost5)}만 원)` : `5년 유지비 대당 ${fmt(a.cost5)}만 원`,
+    eco: () => a.sc.eco >= 10 ? `${a.veh.fuel} 차량으로 친환경 기준 최고 점수` : `${a.veh.fuel} 차량으로 친환경 점수가 2순위(${b ? b.veh.fuel : '-'})보다 높음`,
+    conv: () => a.drivers >= totalDrivers() && totalDrivers() > 0
+      ? `자동변속기로 운전 가능 인원 ${a.drivers}명 전원 운행 가능`
+      : `자동변속기로 운전 가능 인원 ${a.drivers}명 운행 가능`,
+  };
+  if (!b) {
+    const lines = CRITERIA.map(k => ({k, v:a.sc[k.id] * num(w[k.id])})).sort((x, y) => y.v - x.v).slice(0, 3).map(o => tpl[o.k.id]());
+    return {lines:['단독 후보로 비교 대상 없음', ...lines].slice(0, 3), close:false};
+  }
+  const diffs = CRITERIA.map(k => ({k, d:a.sc[k.id] - b.sc[k.id], contrib:num(w[k.id]) * (a.sc[k.id] - b.sc[k.id])}));
+  const ahead = diffs.filter(o => o.d > 1e-9).sort((x, y) => y.contrib - x.contrib);
+  const behind = diffs.filter(o => o.d < -1e-9).sort((x, y) => x.contrib - y.contrib);
+  const lines = ahead.slice(0, 3).map(o => tpl[o.k.id]());
+  for (const o of behind) { if (lines.length >= 3) break; lines.push(`다만 ${topic(o.k.label)} ${b.name}이(가) 우수함`); }
+  if (lines.length < 3 && a.penalty < b.penalty) lines.push(`감점 ${fmt(a.penalty)}점으로 2순위(${fmt(b.penalty)}점)보다 제한사항이 적음`);
+  // 점수가 같은 기준은 가중치가 큰 순서로 '같은 수준'임을 밝힌다
+  const ties = diffs.filter(o => Math.abs(o.d) <= 1e-9).sort((x, y) => num(w[y.k.id]) - num(w[x.k.id]));
+  for (const o of ties) { if (lines.length >= 3) break; lines.push(`${topic(o.k.label)} 2순위(${b.name})와 같은 수준 (${fmt(a.sc[o.k.id],1)}점)`); }
+  return {lines, close: a.final - b.final <= CLOSE_GAP};
+}
+
+/* ---------------- 화면 ---------------- */
+function renderNav(){
+  $('#nav').innerHTML = SCREENS.map((s, i) => `<a class="${s.id === screen ? 'on' : ''}" onclick="go('${s.id}')"><span class="no">${i+1}</span>${s.label}</a>`).join('');
+}
+function go(id){ screen = id; renderNav(); render(); window.scrollTo(0, 0); }
+function render(){
+  const v = $('#view');
+  v.innerHTML = ({profile:viewProfile, cond:viewCond, rank:viewRank, report:viewReport, records:viewRecords})[screen]();
+  if (screen === 'report') $('#reportText').value = reportText(evaluate());
+}
+function updateTopbar(){
+  $('#tbUnit').textContent = state.profile.name ? state.profile.name : '부대명 미입력';
+  const ls = state.meta.lastSaved ? new Date(state.meta.lastSaved) : null;
+  $('#tbSaved').textContent = ls ? `마지막 저장 ${ls.toLocaleDateString('ko-KR')} ${ls.toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'})}` : '아직 저장 안 됨';
+  const lb = state.meta.lastBackup ? new Date(state.meta.lastBackup) : null;
+  const el = $('#tbBackup');
+  if (!lb) { el.textContent = '백업 기록 없음 — JSON 백업을 권장합니다'; el.classList.add('old'); }
+  else {
+    const days = Math.floor((Date.now() - lb.getTime()) / 86400000);
+    el.textContent = `마지막 백업 ${days}일 전${days === 0 ? ' (오늘)' : ''}`;
+    el.classList.toggle('old', days >= 7);
+  }
+}
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 3200);
+}
+const numInput = (k, val, attrs='') => `<input type="number" data-k="${k}" data-t="num" value="${esc(val)}" ${attrs}>`;
+const tag = t => `<span class="tag ${t.lv}">${esc(t.text)}</span>`;
+
+/* 1. 부대 프로필 */
+function viewProfile(){
+  const p = state.profile;
+  return `<h2>부대 프로필</h2><p class="sub">한 번 입력하면 이 PC 브라우저에 자동 저장되어 다음에 열어도 남아 있습니다.</p>
+  <div class="grid2">
+   <div class="card">
+    <h3>기본 정보</h3>
+    <div class="field"><label>부대명 (공개 가능한 명칭만)</label><input type="text" data-k="profile.name" value="${esc(p.name)}" placeholder="예: OO부대"></div>
+    <div class="inline-fields" style="grid-template-columns:1fr 1fr">
+     <div class="field"><label>총예산</label><div class="row">${numInput('profile.totalBudget', p.totalBudget, 'min="0" style="width:140px"')}<span class="unitlbl">만 원</span></div></div>
+     <div class="field"><label>연간 예상 주행거리</label><div class="row">${numInput('profile.annualKm', p.annualKm, 'min="0" step="1000" style="width:120px"')}<span class="unitlbl">km/대</span></div></div>
+    </div>
+    <h3 style="margin-top:8px">운행 환경</h3>
+    ${[['paved','포장도로 위주'],['unpaved','비포장 많음'],['mountain','산악 지형 많음'],['cold','혹한지 (동절기 영하 15℃ 이하 빈번)']].map(([k,l]) =>
+      `<label class="check"><input type="checkbox" data-k="profile.env.${k}" data-t="bool" ${p.env[k] ? 'checked' : ''}>${l}</label>`).join('')}
+    <h3 style="margin-top:12px">충전 인프라</h3>
+    <div class="row">
+     <span class="lbl" style="width:110px">전기 충전기</span>
+     <select data-k="profile.evCharger" data-t="bool01"><option value="1" ${p.evCharger ? 'selected' : ''}>있음</option><option value="0" ${!p.evCharger ? 'selected' : ''}>없음</option></select>
+     <span class="lbl" style="width:120px;margin-left:16px">수소 충전소</span>
+     <select data-k="profile.h2Access" data-t="bool01"><option value="1" ${p.h2Access ? 'selected' : ''}>접근 가능</option><option value="0" ${!p.h2Access ? 'selected' : ''}>접근 불가</option></select>
+    </div>
+   </div>
+   <div class="card">
+    <h3>운전 인원 면허 현황</h3>
+    <table><tr><th>면허 종류</th><th class="num">인원 (명)</th></tr>
+    ${LICENSES.map(l => `<tr><td>${l.label}</td><td class="num">${numInput('profile.licenses.'+l.id, p.licenses[l.id], 'min="0" style="width:90px"')}</td></tr>`).join('')}
+    </table>
+    <div style="margin-top:14px" id="licBar">${licenseBar()}</div>
+   </div>
+  </div>`;
+}
+function licenseBar(){
+  const L = state.profile.licenses, tot = totalDrivers();
+  const manual = LICENSES.filter(l => !l.id.endsWith('auto')).reduce((a, l) => a + num(L[l.id]), 0);
+  const segs = LICENSES.map((l, i) => ({l, n:num(L[l.id]), i})).filter(o => o.n > 0);
+  return `<div class="lbl" style="margin-bottom:6px">면허 종류별 인원 누적 막대 (총 ${tot}명)</div>
+   <div class="stack">${tot ? segs.map(o => `<div class="pat${o.i}" style="width:${o.n / tot * 100}%" title="${o.l.label} ${o.n}명">${o.n}</div>`).join('') : '<div style="color:#5a6473;width:100%">입력된 인원 없음</div>'}</div>
+   <div class="legend">${LICENSES.map((l, i) => `<span><i class="pat${i}"></i>${l.label} ${num(L[l.id])}명</span>`).join('')}</div>
+   <p class="hint" style="font-size:13px;margin:10px 0 0">수동변속기 운전 가능 인원: <b>${manual}명</b> / 자동변속기 운전 가능 인원: <b>${tot}명</b> (차종별 정원·적재중량 제한은 면허 규칙표 적용)</p>`;
+}
+
+/* 2. 구매 조건·후보 */
+const ICONS = {
+  sedan:`<svg viewBox="0 0 140 70" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M10 48 V40 Q12 34 22 32 L40 30 L56 17 Q60 14 68 14 H90 Q97 14 101 18 L114 30 Q128 32 130 38 V48 Z"/><path d="M47 30 L59 20 H76 V30 Z M82 30 V20 H96 L106 30 Z" stroke-width="2.5"/><circle cx="38" cy="50" r="9" fill="#fff"/><circle cx="104" cy="50" r="9" fill="#fff"/><path d="M8 60 H132" stroke-width="2" opacity=".4"/></svg>`,
+  van:`<svg viewBox="0 0 140 70" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M8 50 V22 Q8 12 18 12 H112 Q120 12 124 20 L132 36 V50 Z"/><path d="M16 20 H32 V32 H16 Z M38 20 H56 V32 H38 Z M62 20 H80 V32 H62 Z M86 20 H104 V32 H86 Z M110 20 H116 L122 32 H110 Z" stroke-width="2.2"/><circle cx="34" cy="52" r="9" fill="#fff"/><circle cx="108" cy="52" r="9" fill="#fff"/><path d="M8 62 H132" stroke-width="2" opacity=".4"/></svg>`,
+  truck1:`<svg viewBox="0 0 140 70" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M100 50 V18 Q100 12 106 12 H120 Q126 12 128 18 L132 34 V50 Z"/><path d="M106 18 H120 L124 30 H106 Z" stroke-width="2.2"/><path d="M8 50 V34 H100 V50 Z"/><path d="M8 34 V28 M30 34 V28 M52 34 V28 M74 34 V28 M96 34 V28" stroke-width="2.2"/><circle cx="30" cy="52" r="8" fill="#fff"/><circle cx="114" cy="52" r="8" fill="#fff"/><path d="M8 62 H132" stroke-width="2" opacity=".4"/></svg>`,
+  truckL:`<svg viewBox="0 0 140 70" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M104 50 V14 Q104 8 110 8 H124 Q130 8 132 14 L134 30 V50 Z"/><path d="M110 14 H124 L127 28 H110 Z" stroke-width="2.2"/><path d="M6 46 V10 H100 V46 Z"/><path d="M6 46 H104" /><path d="M28 10 V46 M52 10 V46 M76 10 V46" stroke-width="1.8" opacity=".6"/><circle cx="22" cy="52" r="8" fill="#fff"/><circle cx="42" cy="52" r="8" fill="#fff"/><circle cx="118" cy="52" r="8" fill="#fff"/><path d="M4 63 H136" stroke-width="2" opacity=".4"/></svg>`,
+  etc:`<svg viewBox="0 0 140 70" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"><path d="M10 48 V34 H62 V24 Q62 16 70 16 H96 Q103 16 106 22 L114 32 Q126 33 128 38 V48 Z"/><path d="M70 22 H84 V32 H70 Z M90 22 H100 L106 32 H90 Z" stroke-width="2.2"/><circle cx="34" cy="50" r="9" fill="#fff"/><circle cx="104" cy="50" r="9" fill="#fff"/><path d="M28 14 V30 M20 22 H36" stroke-width="3.5"/><path d="M8 61 H132" stroke-width="2" opacity=".4"/></svg>`,
+};
+function viewCond(){
+  const c = state.cond, w = state.weights;
+  const cands = candidates();
+  const baseOpts = state.vehicles.filter(v => v.use === c.purpose);
+  return `<h2>구매 조건·후보</h2><p class="sub">용도를 고르고 후보 차량에 조달청 가격(만 원)을 입력하면 순위가 바로 계산됩니다.</p>
+  <div class="card"><h3>1) 용도 선택</h3>
+   <div class="purpose-cards">${PURPOSES.map(p => `<div class="pcard ${p.id === c.purpose ? 'on' : ''}" onclick="setPurpose('${p.id}')" role="button" aria-pressed="${p.id === c.purpose}">${ICONS[p.id]}${p.label}<small>${p.desc}</small></div>`).join('')}</div>
+  </div>
+  <div class="grid2">
+   <div class="card"><h3>2) 구매 조건</h3>
+    <div class="inline-fields">
+     <div class="field"><label>구매 대수</label><div class="row">${numInput('cond.qty', c.qty, 'min="1" style="width:90px"')}<span class="unitlbl">대</span></div></div>
+     <div class="field"><label>대당 예산</label><div class="row"><input type="number" id="perUnit" data-k="cond.perUnitBudget" data-t="num" value="${perUnitBudget()}" min="0" style="width:120px"><span class="unitlbl">만 원</span></div>
+      <span class="hint" id="perUnitHint">${c.perUnitOverride ? '직접 수정함 · <a href="#" onclick="resetPerUnit();return false">자동 계산으로</a>' : `총예산 ${fmt(state.profile.totalBudget)}만 원 ÷ ${c.qty}대 자동 계산`}</span></div>
+     <div class="field"><label>신차 / 중고</label><select data-k="cond.newUsed" data-t="text" data-rerender="1">
+      <option value="both" ${c.newUsed === 'both' ? 'selected' : ''}>신차·중고 모두</option><option value="new" ${c.newUsed === 'new' ? 'selected' : ''}>신차만</option><option value="used" ${c.newUsed === 'used' ? 'selected' : ''}>중고만</option></select></div>
+     <div class="field"><label>필요 승차 인원</label><div class="row">${numInput('cond.seats', c.seats, 'min="0" style="width:90px"')}<span class="unitlbl">명</span></div><span class="hint">0이면 조건 없음</span></div>
+     <div class="field"><label>필요 적재량</label><div class="row">${numInput('cond.payload', c.payload, 'min="0" step="0.5" style="width:90px"')}<span class="unitlbl">톤</span></div><span class="hint">0이면 조건 없음</span></div>
+     <div class="field"><label>필요 운전 인원</label><div class="row">${numInput('cond.drivers', c.drivers, 'min="0" style="width:90px"')}<span class="unitlbl">명</span></div></div>
+    </div>
+   </div>
+   <div class="card weights"><h3>3) 가중치</h3>
+    ${CRITERIA.map(k => `<div class="w"><span class="lbl">${k.label}</span><input type="range" min="0" max="100" step="5" data-k="weights.${k.id}" data-t="num" value="${num(w[k.id])}"><span class="score" id="wv-${k.id}">${num(w[k.id])}%</span></div>`).join('')}
+    <div class="row" style="margin-top:8px"><span id="wsum">${weightSumHtml()}</span><div style="flex:1"></div><button class="small" onclick="resetWeights()">기본값 (30/25/20/15/10)</button></div>
+   </div>
+  </div>
+  <div class="card"><h3>4) 후보 차량과 조달청 가격 — ${purposeOf(c.purpose).label}</h3>
+   ${cands.length ? `<div class="tbl-wrap"><table>
+    <tr><th>포함</th><th>차량</th><th>연료·변속기·구동</th><th class="num">승차정원</th><th class="num">적재</th><th class="num">연비</th><th class="num">정비비/년</th><th class="num">조달청 가격 (만 원)</th><th></th></tr>
+    ${cands.map(x => `<tr class="${x.excluded ? 'off' : ''}">
+      <td><input type="checkbox" ${x.excluded ? '' : 'checked'} onchange="toggleExclude('${esc(x.key)}', !this.checked)"></td>
+      <td><b>${esc(x.name)}</b>${x.used ? ` <span class="tag yellow">중고 ${fmt(x.used.km)}km</span>` : ''}${x.veh.verified ? '' : ' <span class="tag gray" title="' + esc(x.veh.note) + '">제원 확인 필요</span>'}</td>
+      <td>${esc(vehSpec(x.veh))}</td><td class="num">${x.veh.seats}명</td><td class="num">${num(x.veh.payload) ? x.veh.payload + '톤' : '-'}</td>
+      <td class="num">${x.veh.eff} ${effUnit(x.veh.fuel)}</td><td class="num">${fmt(num(x.veh.maint) * (x.used ? USED_MAINT_RATE : 1))}만 원${x.used ? ' (+30%)' : ''}</td>
+      <td class="num">${x.used ? numInput(`used.${state.used.indexOf(x.used)}.price`, x.used.price || '', 'min="0" style="width:120px"')
+        : `<input type="number" data-k="prices.${esc(x.key)}" data-t="num" value="${state.prices[x.key] || ''}" min="0" placeholder="가격 입력" style="width:120px">`}</td>
+      <td>${x.used ? `<button class="small danger" onclick="removeUsed('${esc(x.used.id)}')">삭제</button>` : ''}</td></tr>`).join('')}
+   </table></div>` : `<p class="empty">이 용도의 후보 차량이 없습니다. 기록 관리 &gt; 차량 DB 편집에서 차량을 추가하세요.</p>`}
+   <h3 style="margin-top:18px">중고 후보 추가</h3>
+   ${baseOpts.length ? `<div class="row">
+     <select id="uBase">${baseOpts.map(v => `<option value="${esc(v.id)}">${esc(vehName(v))} (${esc(vehSpec(v))})</option>`).join('')}</select>
+     <span class="lbl">연식</span><input type="number" id="uYear" style="width:90px" value="${new Date().getFullYear() - 3}">
+     <span class="lbl">주행거리</span><input type="number" id="uKm" style="width:110px" placeholder="km">
+     <span class="lbl">가격</span><input type="number" id="uPrice" style="width:110px" placeholder="만 원">
+     <button onclick="addUsed()">추가</button></div>` : '<p class="empty">기준 차종이 없습니다.</p>'}
+  </div>
+  <div class="live" id="live">${liveSummary()}</div>`;
+}
+function weightSumHtml(){
+  const s = CRITERIA.reduce((a, k) => a + num(state.weights[k.id]), 0);
+  return `<span class="sum ${s === 100 ? '' : 'bad'}">합계 ${s}%${s === 100 ? ' ✔' : ' — 합계가 100%가 아닙니다. 조정하세요.'}</span>`;
+}
+function liveSummary(){
+  const r = evaluate();
+  if (!r.list.length) return '<b>즉시 계산:</b> 가격이 입력된 후보가 없습니다. 가격을 입력하면 순위가 바로 계산됩니다.';
+  return `<b>즉시 계산:</b> ${r.list.slice(0, 3).map(x => `${x.rank}위 ${esc(x.name)} (${esc(vehSpec(x.veh))}) <b>${fmt(x.final,1)}점</b>`).join(' · ')}
+    ${r.unpriced.length ? `<span class="unitlbl"> — 가격 미입력 ${r.unpriced.length}대는 순위에서 제외</span>` : ''} <button class="small primary" style="margin-left:8px" onclick="go('rank')">순위·분석 보기 →</button>`;
+}
+function setPurpose(id){ state.cond.purpose = id; save(); render(); }
+function resetPerUnit(){ state.cond.perUnitOverride = false; save(); render(); }
+function resetWeights(){ state.weights = clone(DEFAULT_WEIGHTS); save(); render(); }
+function toggleExclude(key, ex){ if (ex) state.excluded[key] = true; else delete state.excluded[key]; save(); render(); }
+function addUsed(){
+  const price = num($('#uPrice').value), year = num($('#uYear').value), km = num($('#uKm').value);
+  if (!price) { toast('중고 가격을 입력하세요.'); return; }
+  if (!year) { toast('연식을 입력하세요.'); return; }
+  state.used.push({id:uid('used'), baseId:$('#uBase').value, year, km, price});
+  save(); render(); toast('중고 후보를 추가했습니다.');
+}
+function removeUsed(id){ state.used = state.used.filter(u => u.id !== id); delete state.excluded['u:'+id]; save(); render(); }
+
+/* 3. 순위·분석 */
+function warnings(r){
+  const w = [];
+  if (r.weightSum !== 100) w.push(`<div class="alert warn">가중치 합계가 ${r.weightSum}%입니다. 100%로 맞춰야 총점이 100점 만점이 됩니다.</div>`);
+  if (!(r.budget > 0)) w.push('<div class="alert caution">대당 예산이 0입니다. 부대 프로필의 총예산 또는 구매 조건의 대당 예산을 입력하세요. (예산 판정 생략)</div>');
+  if (!(totalDrivers() > 0)) w.push('<div class="alert caution">운전 인원 면허 현황이 비어 있어 모든 차량이 면허 부적합으로 판정됩니다. 부대 프로필에서 입력하세요.</div>');
+  return w.join('');
+}
+function viewRank(){
+  const r = evaluate(), c = state.cond, list = r.list;
+  const P = purposeOf(c.purpose);
+  if (!list.length) return `<h2>순위·분석</h2><p class="sub">${P.label} · 후보 ${r.all.length}대</p>${warnings(r)}
+    <div class="card"><p>가격이 입력된 후보가 없습니다. <a href="#" onclick="go('cond');return false">구매 조건·후보</a>에서 조달청 가격을 입력하세요.</p></div>`;
+  const a = list[0];
+  return `<h2>순위·분석</h2><p class="sub">${P.label}(${P.desc}) · ${c.qty}대 · 대당 예산 ${fmt(r.budget)}만 원 · 필요 운전 인원 ${num(c.drivers)}명 · 가중치 ${CRITERIA.map(k => `${k.label} ${num(state.weights[k.id])}`).join(' / ')}</p>
+  ${warnings(r)}
+  <div class="grid-main"><div>
+   <div class="card"><div class="row" style="margin-bottom:10px"><h3 style="margin:0">순위표</h3><div style="flex:1"></div><button onclick="saveHistory()">이 평가 이력 저장</button><button class="primary" onclick="go('report')">보고서로 →</button></div>
+    <table><tr><th>순위</th><th>차량 (연료·변속기)</th><th>가격</th><th style="width:30%">최종 점수 (100점)</th><th class="num">감점</th><th>상태</th></tr>
+    ${list.map(x => `<tr><td class="score">${x.rank}</td><td><b>${esc(x.name)}</b><br><span class="unitlbl">${esc(vehSpec(x.veh))} · 운전 가능 ${x.drivers}명</span></td>
+      <td class="num">${fmt(x.price)}만 원</td>
+      <td><div class="row" style="flex-wrap:nowrap"><div class="bar big" style="flex:1"><i style="width:${x.final}%"></i>${x.penalty ? `<i class="pen" style="left:${x.final}%;width:${Math.min(x.penalty, 100 - x.final)}%"></i>` : ''}</div><span class="score" style="width:46px;text-align:right">${fmt(x.final,1)}</span></div></td>
+      <td class="num">${x.penalty ? `<b style="color:var(--red)">−${x.penalty}</b>` : '0'}</td>
+      <td>${x.tags.map(tag).join('')}</td></tr>`).join('')}
+    </table>
+    <p class="unitlbl" style="margin:8px 0 0">막대의 빗금 부분은 감점(면허 부적합 −15, 충전 인프라 부족 −5)입니다. 가격 미입력·제외 후보 ${r.all.length - list.length}대는 순위에 없습니다.</p>
+   </div>
+   <div class="card"><h3>1순위 선정 사유 — ${esc(a.name)}</h3>
+    ${r.reasons.close ? '<div class="close-note">근소한 차이: 추가 검토 권장 (1·2순위 차 ' + fmt(a.final - list[1].final, 1) + '점)</div>' : ''}
+    <ol class="reasons">${r.reasons.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ol>
+    <h3 style="margin-top:14px">차량별 평가 요약</h3>
+    <table class="tight">${list.map(x => `<tr><td style="width:40px" class="score">${x.rank}위</td><td>${esc(x.name)}</td><td>${esc(vehicleSummary(x, a))}</td></tr>`).join('')}</table>
+   </div>
+   <div class="card"><h3>기준별 점수 분해 (각 10점 만점)</h3>
+    <div class="breakdown">${list.map(x => `<div class="bd"><div class="t">${x.rank}위 ${esc(x.name)}</div>
+      ${CRITERIA.map(k => `<div class="r"><span>${k.label}</span><div class="bar"><i style="width:${x.sc[k.id] * 10}%"></i></div><span class="score">${fmt(x.sc[k.id],1)}</span></div>`).join('')}
+      <div class="unitlbl" style="margin-top:4px">5년 유지비 ${fmt(x.cost5)}만 원 (연료 ${fmt(x.energyYear)} + 정비 ${fmt(x.maintYear)}만 원/년)</div></div>`).join('')}</div>
+   </div>
+   <div class="card"><h3>제한사항 및 대책</h3>${limitsTable(list)}</div>
+  </div>
+  <div class="card ref"><h3>참고 패널 <span class="unitlbl">(점수 미반영)</span></h3>${refPanel()}</div>
+  </div>`;
+}
+function vehicleSummary(x, a){
+  const strong = CRITERIA.map(k => ({k, v:x.sc[k.id]})).filter(o => o.v >= 9.95).map(o => o.k.label);
+  if (x === a) return `총점 ${fmt(x.total,1)}점${x.penalty ? `, 감점 ${x.penalty}점` : ''}. 만점 기준: ${strong.join(', ') || '없음'}`;
+  const gaps = CRITERIA.map(k => ({k, d:(a.sc[k.id] - x.sc[k.id]) * num(state.weights[k.id]) / 10})).filter(o => o.d > 0.05).sort((p, q) => q.d - p.d).slice(0, 2);
+  return `1순위 대비 ${fmt(a.final - x.final,1)}점 낮음${gaps.length ? ' · 주요 차이: ' + gaps.map(o => `${o.k.label} −${fmt(o.d,1)}점`).join(', ') : ''}${x.penalty > a.penalty ? ` · 감점 ${x.penalty}점` : ''}`;
+}
+function limitsTable(list, top){
+  const rows = list.slice(0, top || list.length).filter(x => x.limits.length);
+  if (!rows.length) return '<p class="empty">모든 후보가 제한사항 없이 통과했습니다 (예산 이내, 면허 적합).</p>';
+  return `<table><tr><th style="width:26%">차량</th><th>제한사항</th><th>대책</th></tr>
+   ${rows.map(x => x.limits.map((l, i) => `<tr>${i === 0 ? `<td rowspan="${x.limits.length}"><b>${x.rank}위 ${esc(x.name)}</b></td>` : ''}<td>${esc(l.text)}</td><td>${esc(l.measure)}</td></tr>`).join('')).join('')}</table>`;
+}
+function refItems(){
+  const pu = state.cond.purpose;
+  return {
+    cases: state.cases.filter(x => x.use === pu).sort((a, b) => num(b.year) - num(a.year)),
+    plans: state.plans.filter(x => x.use === pu),
+  };
+}
+function refPanel(){
+  const {cases, plans} = refItems();
+  return `<h4>전년도 구매 사례</h4>${cases.length ? `<ul>${cases.map(x => `<li>${esc(x.year)}년 ${esc(x.model)} — ${fmt(x.price)}만 원, 만족도 ${esc(x.score)}/5${x.memo ? `<br><span class="unitlbl">문제점: ${esc(x.memo)}</span>` : ''}</li>`).join('')}</ul>` : '<p class="empty">같은 용도의 사례가 없습니다. 기록 관리에서 추가하세요.</p>'}
+   <h4>일괄 보급 계획</h4>${plans.length ? `<ul>${plans.map(x => `<li>${esc(x.model)} ${esc(x.qty)}대 — ${esc(x.when)}${x.memo ? ` (${esc(x.memo)})` : ''}</li>`).join('')}</ul>` : '<p class="empty">같은 용도의 보급 계획이 없습니다.</p>'}`;
+}
+function saveHistory(){
+  const r = evaluate();
+  if (!r.list.length) { toast('저장할 평가 결과가 없습니다.'); return; }
+  const c = state.cond;
+  state.history.unshift({id:uid('h'), date:new Date().toISOString(), purpose:c.purpose, top:r.list[0].name + ' (' + vehSpec(r.list[0].veh) + ')', topScore:Math.round(r.list[0].final * 10) / 10,
+    snapshot:clone({cond:state.cond, weights:state.weights, prices:state.prices, excluded:state.excluded, used:state.used})});
+  save(); toast('평가 이력을 저장했습니다. (기록 관리 > 평가 이력)');
+}
+
+/* 4. 보고서 */
+function envText(){
+  const e = state.profile.env;
+  return [e.paved && '포장도로 위주', e.unpaved && '비포장 많음', e.mountain && '산악 지형 많음', e.cold && '혹한지'].filter(Boolean).join(', ') || '입력 없음';
+}
+function licenseText(){
+  const L = state.profile.licenses;
+  const parts = LICENSES.filter(l => num(L[l.id]) > 0).map(l => `${l.label} ${num(L[l.id])}명`);
+  return parts.length ? `총 ${totalDrivers()}명 (${parts.join(', ')})` : '입력 없음';
+}
+const infraText = () => `전기 충전기 ${state.profile.evCharger ? '있음' : '없음'}, 수소 충전소 ${state.profile.h2Access ? '접근 가능' : '접근 불가'}`;
+const unitName = () => state.profile.name || '○○부대';
+function viewReport(){
+  const r = evaluate(), c = state.cond, P = purposeOf(c.purpose), list = r.list, top = list.slice(0, 5);
+  const {cases, plans} = refItems();
+  return `<div class="no-print"><h2>보고서</h2><p class="sub">A4 세로 보고 양식입니다. 'PDF 저장'을 누르고 인쇄 창에서 대상(프린터)을 <b>PDF로 저장</b>으로 고르세요.</p>
+   ${warnings(r)}
+   <div class="report-tools"><button class="primary" onclick="window.print()">PDF 저장</button><button onclick="copyReport()">문안 복사</button><button onclick="saveHistory()">이 평가 이력 저장</button></div></div>
+  <div class="sheet" id="sheet">
+   <h1>${esc(unitName())} ${esc(P.report)} 구매 검토 결과</h1>
+   <div class="stamp">작성 일자: ${today()}</div>
+   <h5>1. 구매 목적</h5>
+   <div>○ 용도: ${esc(P.label)} (${esc(P.desc)}) / 구매 대수: ${c.qty}대${c.newUsed === 'both' ? ' (신차·중고 후보 포함)' : c.newUsed === 'used' ? ' (중고)' : ' (신차)'}</div>
+   <div>○ 필요 조건: 승차 인원 ${num(c.seats) ? num(c.seats) + '명' : '조건 없음'}, 적재량 ${num(c.payload) ? num(c.payload) + '톤' : '조건 없음'}, 운전 인원 ${num(c.drivers)}명</div>
+   <h5>2. 부대 조건 요약</h5>
+   <table><tr><th style="width:24%">예산</th><td>총 ${fmt(state.profile.totalBudget)}만 원 / 대당 ${fmt(r.budget)}만 원</td></tr>
+    <tr><th>운전 인원 면허</th><td>${esc(licenseText())}</td></tr>
+    <tr><th>운행 환경</th><td>${esc(envText())} / 연간 주행 ${fmt(state.profile.annualKm)}km/대</td></tr>
+    <tr><th>충전 인프라</th><td>${esc(infraText())}</td></tr></table>
+   <h5>3. 검토 결과 (상위 ${top.length}대)</h5>
+   ${top.length ? `<table><tr><th>순위</th><th>차량 (연료·변속기)</th><th>가격(만 원)</th>${CRITERIA.map(k => `<th class="num">${k.label}</th>`).join('')}<th class="num">감점</th><th style="width:20%">최종 점수</th></tr>
+    ${top.map(x => `<tr><td>${x.rank}</td><td>${esc(x.name)}<br><span style="font-size:8.5pt">${esc(vehSpec(x.veh))}</span></td><td class="num">${fmt(x.price)}</td>
+     ${CRITERIA.map(k => `<td class="num">${fmt(x.sc[k.id],1)}</td>`).join('')}<td class="num">${x.penalty ? '−' + x.penalty : '0'}</td>
+     <td><div class="row" style="gap:4px;flex-wrap:nowrap"><div class="bar" style="flex:1"><i style="width:${x.final}%"></i></div><b>${fmt(x.final,1)}</b></div></td></tr>
+     <tr><td></td><td colspan="${CRITERIA.length + 4}" style="font-size:8.5pt">상태: ${x.tags.map(tag).join('')}</td></tr>`).join('')}</table>` : '<p>가격이 입력된 후보가 없습니다.</p>'}
+   <h5>4. 1순위 선정 사유${list[0] ? ' — ' + esc(list[0].name) : ''}</h5>
+   ${r.reasons.close ? '<div class="close-note">근소한 차이: 추가 검토 권장</div>' : ''}
+   <ol>${r.reasons.lines.map(l => `<li>${esc(l)}</li>`).join('')}</ol>
+   <h5>5. 제한사항 및 대책</h5>
+   ${limitsTable(list, 5)}
+   <h5>6. 참고 (점수 미반영)</h5>
+   <div>○ 전년도 구매 사례: ${cases.length ? cases.map(x => `${esc(x.year)}년 ${esc(x.model)} ${fmt(x.price)}만 원(만족도 ${esc(x.score)}/5${x.memo ? ', ' + esc(x.memo) : ''})`).join('; ') : '없음'}</div>
+   <div>○ 일괄 보급 계획: ${plans.length ? plans.map(x => `${esc(x.model)} ${esc(x.qty)}대(${esc(x.when)})`).join('; ') : '없음'}</div>
+   <div class="foot">※ 평가 기준(가중치): ${CRITERIA.map(k => `${k.label} ${num(state.weights[k.id])}%`).join(', ')}. 기준별 10점 만점 × 가중치 = 100점 만점,
+    감점: 면허 부적합 −${PENALTY_LICENSE}점, 충전 인프라 부족 −${PENALTY_INFRA}점.<br>
+    ※ 유지비 = (연간 주행거리 ÷ 연비 × 에너지 단가 + 연간 정비비) × 5년, 중고차 정비비 +30%. 에너지 단가: ${Object.values(state.energy).map(e => `${e.label.split(' ')[0]} ${fmt(e.price, e.price % 1 ? 1 : 0)}${e.unit}`).join(', ')}.<br>
+    ※ 가격은 조달청 쇼핑몰 가격을 사용자가 입력한 값이며, 차량 제원은 제조사 공식 제원표 기준으로 확인이 필요합니다. 작성: 부대 차량 구매 도우미 v1.0 (${today()})</div>
+  </div>
+  <div class="card no-print" style="width:210mm;margin:0 auto"><h3>개조식 문안 (한글 문서 붙여넣기용)</h3>
+   <p class="unitlbl" style="margin-top:-6px">'문안 복사'가 막혀 있으면 아래 상자를 클릭하고 Ctrl+A, Ctrl+C로 복사하세요.</p>
+   <textarea class="copytext" id="reportText" readonly onclick="this.select()"></textarea></div>`;
+}
+function reportText(r){
+  const c = state.cond, P = purposeOf(c.purpose), list = r.list, top = list.slice(0, 5);
+  const {cases, plans} = refItems();
+  const g = i => GANADA[i] + '.';
+  const out = [];
+  out.push(`${unitName()} ${P.report} 구매 검토 결과`, `(${today()})`, '');
+  out.push('1. 구매 목적');
+  out.push(`  ${g(0)} 용도: ${P.label}(${P.desc}), 구매 대수 ${c.qty}대`);
+  out.push(`  ${g(1)} 필요 조건: 승차 인원 ${num(c.seats) ? num(c.seats) + '명' : '조건 없음'}, 적재량 ${num(c.payload) ? num(c.payload) + '톤' : '조건 없음'}, 운전 인원 ${num(c.drivers)}명`);
+  out.push('2. 부대 조건');
+  out.push(`  ${g(0)} 예산: 총 ${fmt(state.profile.totalBudget)}만 원(대당 ${fmt(r.budget)}만 원)`);
+  out.push(`  ${g(1)} 운전 인원 면허: ${licenseText()}`);
+  out.push(`  ${g(2)} 운행 환경: ${envText()}, 연간 주행 ${fmt(state.profile.annualKm)}km/대`);
+  out.push(`  ${g(3)} 충전 인프라: ${infraText()}`);
+  out.push('3. 검토 결과(순위)');
+  if (!top.length) out.push('  가. 가격이 입력된 후보 없음');
+  top.forEach((x, i) => {
+    out.push(`  ${g(i)} ${x.rank}순위: ${x.name}(${vehSpec(x.veh)}) ${fmt(x.final,1)}점, ${fmt(x.price)}만 원`);
+    out.push(`    1) 기준별 점수: ${CRITERIA.map(k => `${k.label} ${fmt(x.sc[k.id],1)}`).join(', ')}${x.penalty ? `, 감점 −${x.penalty}` : ''}`);
+    out.push(`    2) 상태: ${x.tags.map(t => t.text).join(', ')}`);
+  });
+  out.push('4. 1순위 선정 사유' + (list[0] ? `(${list[0].name})` : ''));
+  if (r.reasons.close) out.push('  ※ 근소한 차이: 추가 검토 권장');
+  r.reasons.lines.forEach((l, i) => out.push(`  ${g(i)} ${l}`));
+  out.push('5. 제한사항 및 대책');
+  const lim = top.filter(x => x.limits.length);
+  if (!lim.length) out.push('  가. 제한사항 없음(예산 이내, 면허 적합)');
+  lim.forEach((x, i) => {
+    out.push(`  ${g(i)} ${x.rank}순위 ${x.name}`);
+    x.limits.forEach((l, j) => out.push(`    ${j + 1}) ${l.text} → 대책: ${l.measure}`));
+  });
+  out.push('6. 참고(점수 미반영)');
+  out.push(`  ${g(0)} 전년도 구매 사례: ${cases.length ? cases.map(x => `${x.year}년 ${x.model} ${fmt(x.price)}만 원(만족도 ${x.score}/5)`).join('; ') : '없음'}`);
+  out.push(`  ${g(1)} 일괄 보급 계획: ${plans.length ? plans.map(x => `${x.model} ${x.qty}대(${x.when})`).join('; ') : '없음'}`);
+  out.push(`※ 평가 기준(가중치): ${CRITERIA.map(k => `${k.label} ${num(state.weights[k.id])}%`).join(', ')} / 감점: 면허 부적합 −${PENALTY_LICENSE}, 충전 인프라 부족 −${PENALTY_INFRA}`);
+  return out.join('\n');
+}
+async function copyReport(){
+  const ta = $('#reportText'); let ok = false;
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(ta.value); ok = true; } } catch (e) {}
+  if (!ok) { try { ta.focus(); ta.select(); ok = document.execCommand('copy'); } catch (e) {} }
+  ta.focus(); ta.select();
+  toast(ok ? '개조식 문안을 복사했습니다. 한글 문서에 붙여 넣으세요.' : '자동 복사가 막혀 있습니다. 선택된 문안을 Ctrl+C로 복사하세요.');
+}
+
+/* 5. 기록 관리 */
+const purposeSelect = (k, val) => `<select data-k="${k}" data-t="text">${PURPOSES.map(p => `<option value="${p.id}" ${p.id === val ? 'selected' : ''}>${p.label}</option>`).join('')}</select>`;
+const opts = (k, list, val, extra='') => `<select data-k="${k}" data-t="text" ${extra}>${list.map(o => `<option ${o === val ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+const txt = (k, val, w) => `<input type="text" data-k="${k}" value="${esc(val)}" style="width:${w}px">`;
+const nIn = (k, val, w, step='any') => `<input type="number" data-k="${k}" data-t="num" value="${esc(val)}" step="${step}" style="width:${w}px">`;
+function viewRecords(){
+  const s = state;
+  return `<h2>기록 관리</h2><p class="sub">전년도 사례·일괄 보급 계획은 순위·분석과 보고서에 참고로만 표시됩니다. 다른 부대와는 JSON 파일로 공유하세요.</p>
+  <div class="card"><h3>데이터 공유 (JSON)</h3>
+   <div class="row"><button class="primary" onclick="exportAll()">JSON 내보내기 (전체)</button><button onclick="exportVehicles()">JSON 내보내기 (차량 DB만)</button>
+    <span style="width:24px"></span>
+    <span class="lbl">가져오기 방식</span><select id="impMode"><option value="merge">병합 (기존 유지 + 새 항목 추가, 같은 차량은 갱신)</option><option value="overwrite">덮어쓰기 (파일 내용으로 교체)</option></select>
+    <button onclick="$('#impFile').click()">JSON 가져오기…</button><input type="file" id="impFile" accept=".json,application/json" style="display:none" onchange="importFile(this)"></div>
+   <p class="unitlbl" style="margin:8px 0 0">파일에는 schemaVersion ${SCHEMA_VERSION}이 들어갑니다. 덮어쓰기(전체 파일)는 프로필·조건·가격·차량 DB·사례·이력을 모두 교체합니다. 병합은 내 프로필·조건은 그대로 두고 차량 DB·사례·계획·이력만 합칩니다.</p>
+  </div>
+  <div class="card"><div class="row" style="margin-bottom:8px"><h3 style="margin:0">전년도 구매 사례</h3><div style="flex:1"></div><button class="small" onclick="addRow('cases')">+ 사례 추가</button></div>
+   ${s.cases.length ? `<table class="tight"><tr><th>연도</th><th>용도</th><th>차종</th><th>구매가(만 원)</th><th>만족도(1~5)</th><th>문제점 메모</th><th></th></tr>
+   ${s.cases.map((x, i) => `<tr><td>${nIn(`cases.${i}.year`, x.year, 70, 1)}</td><td>${purposeSelect(`cases.${i}.use`, x.use)}</td><td>${txt(`cases.${i}.model`, x.model, 200)}</td><td>${nIn(`cases.${i}.price`, x.price, 100)}</td>
+     <td><select data-k="cases.${i}.score" data-t="num">${[1,2,3,4,5].map(n => `<option ${n === num(x.score) ? 'selected' : ''}>${n}</option>`).join('')}</select></td><td>${txt(`cases.${i}.memo`, x.memo, 300)}</td>
+     <td><button class="small danger" onclick="delRow('cases',${i})">삭제</button></td></tr>`).join('')}</table>` : '<p class="empty">등록된 사례가 없습니다.</p>'}
+  </div>
+  <div class="card"><div class="row" style="margin-bottom:8px"><h3 style="margin:0">일괄 보급 계획 (참고용)</h3><div style="flex:1"></div><button class="small" onclick="addRow('plans')">+ 계획 추가</button></div>
+   ${s.plans.length ? `<table class="tight"><tr><th>용도</th><th>차종</th><th>수량</th><th>예정 시기</th><th>메모</th><th></th></tr>
+   ${s.plans.map((x, i) => `<tr><td>${purposeSelect(`plans.${i}.use`, x.use)}</td><td>${txt(`plans.${i}.model`, x.model, 220)}</td><td>${nIn(`plans.${i}.qty`, x.qty, 70, 1)}</td><td>${txt(`plans.${i}.when`, x.when, 130)}</td><td>${txt(`plans.${i}.memo`, x.memo, 300)}</td>
+     <td><button class="small danger" onclick="delRow('plans',${i})">삭제</button></td></tr>`).join('')}</table>` : '<p class="empty">등록된 계획이 없습니다.</p>'}
+  </div>
+  <div class="card"><h3>평가 이력</h3>
+   ${s.history.length ? `<table><tr><th>일자</th><th>용도</th><th>1순위 차량</th><th class="num">점수</th><th></th></tr>
+   ${s.history.map(h => `<tr><td>${new Date(h.date).toLocaleString('ko-KR')}</td><td>${esc(purposeOf(h.purpose).label)}</td><td>${esc(h.top)}</td><td class="num">${fmt(h.topScore,1)}</td>
+     <td><button class="small" onclick="loadHistory('${esc(h.id)}')">불러오기</button> <button class="small danger" onclick="delHistory('${esc(h.id)}')">삭제</button></td></tr>`).join('')}</table>` : '<p class="empty">저장된 평가가 없습니다. 순위·분석에서 \'이 평가 이력 저장\'을 누르세요.</p>'}
+  </div>
+  <div class="card"><div class="row" style="margin-bottom:8px"><h3 style="margin:0">차량 DB 편집 (${s.vehicles.length}대, 가격 제외 제원)</h3><div style="flex:1"></div>
+    <button class="small" onclick="addVehicle()">+ 차량 추가</button><button class="small danger" onclick="resetVehicles()">기본 DB로 복원</button></div>
+   <p class="unitlbl" style="margin-top:0">'확인' 열은 제조사 공식 제원표와 대조했는지 표시합니다. 사전 탑재 값은 모두 확인 전 상태이며, 특히 연비와 연간 정비비는 추정값입니다. 연비 단위: 전기 km/kWh, 수소 km/kg, 그 외 km/L.</p>
+   <div class="tbl-wrap"><table class="tight"><tr><th>용도</th><th>제조사</th><th>모델명</th><th>트림</th><th>차급</th><th>연료</th><th>변속기</th><th>구동</th><th>정원</th><th>적재(t)</th><th>연비</th><th>정비비(만/년)</th><th>확인</th><th>비고</th><th></th></tr>
+   ${s.vehicles.map((v, i) => `<tr><td>${purposeSelect(`vehicles.${i}.use`, v.use)}</td><td>${txt(`vehicles.${i}.maker`, v.maker, 64)}</td><td>${txt(`vehicles.${i}.model`, v.model, 130)}</td><td>${txt(`vehicles.${i}.trim`, v.trim, 170)}</td>
+     <td>${opts(`vehicles.${i}.cls`, CLASSES, v.cls)}</td><td>${opts(`vehicles.${i}.fuel`, FUELS, v.fuel)}</td><td>${opts(`vehicles.${i}.trans`, ['자동','수동'], v.trans)}</td><td>${opts(`vehicles.${i}.drive`, ['2WD','4WD'], v.drive)}</td>
+     <td>${nIn(`vehicles.${i}.seats`, v.seats, 52, 1)}</td><td>${nIn(`vehicles.${i}.payload`, v.payload, 58)}</td><td>${nIn(`vehicles.${i}.eff`, v.eff, 58)}</td><td>${nIn(`vehicles.${i}.maint`, v.maint, 64)}</td>
+     <td style="text-align:center"><input type="checkbox" data-k="vehicles.${i}.verified" data-t="bool" ${v.verified ? 'checked' : ''}></td><td>${txt(`vehicles.${i}.note`, v.note, 200)}</td>
+     <td><button class="small danger" onclick="delVehicle(${i})">삭제</button></td></tr>`).join('')}</table></div>
+  </div>
+  <div class="grid2">
+   <div class="card"><div class="row" style="margin-bottom:8px"><h3 style="margin:0">면허 규칙 (도로교통법 시행규칙 별표 18 기준)</h3><div style="flex:1"></div><button class="small danger" onclick="resetRules()">기본값</button></div>
+    <table class="tight"><tr><th>면허</th><th>승용</th><th>승합 정원 상한(명)</th><th>화물 적재 상한(톤)</th><th>수동 차량</th></tr>
+    ${s.licenseRules.map((r, i) => `<tr><td>${esc((LICENSES.find(l => l.id === r.id) || {label:r.id}).label)}</td>
+      <td><select data-k="licenseRules.${i}.sedan" data-t="bool01"><option value="1" ${r.sedan ? 'selected' : ''}>가능</option><option value="0" ${!r.sedan ? 'selected' : ''}>불가</option></select></td>
+      <td><input type="number" data-k="licenseRules.${i}.vanMax" data-t="numnull" value="${r.vanMax ?? ''}" placeholder="전체" style="width:70px"> 이하</td>
+      <td><input type="number" data-k="licenseRules.${i}.truckMax" data-t="numnull" value="${r.truckMax ?? ''}" placeholder="전체" style="width:60px">
+        <select data-k="licenseRules.${i}.truckInclusive" data-t="bool01"><option value="1" ${r.truckInclusive ? 'selected' : ''}>이하</option><option value="0" ${!r.truckInclusive ? 'selected' : ''}>미만</option></select></td>
+      <td><select data-k="licenseRules.${i}.manual" data-t="bool01"><option value="1" ${r.manual ? 'selected' : ''}>가능</option><option value="0" ${!r.manual ? 'selected' : ''}>불가</option></select></td></tr>`).join('')}</table>
+    <p class="unitlbl">빈칸은 '전체'(제한 없음). 1종 보통(자동 한정)은 현행 법령으로 최종 확인하세요.</p>
+   </div>
+   <div class="card"><div class="row" style="margin-bottom:8px"><h3 style="margin:0">에너지 단가</h3><div style="flex:1"></div><button class="small danger" onclick="resetEnergy()">기본값</button></div>
+    <table class="tight"><tr><th>연료</th><th class="num">단가</th><th>비고 (출처·기준일)</th></tr>
+    ${Object.entries(s.energy).map(([k, e]) => `<tr><td>${esc(e.label)}</td><td class="num"><input type="number" data-k="energy.${k}.price" data-t="num" value="${e.price}" step="any" style="width:90px"> ${esc(e.unit)}</td><td>${txt(`energy.${k}.note`, e.note, 250)}</td></tr>`).join('')}</table>
+    <p class="unitlbl">휘발유 외 값은 개발 시점 추정값입니다. 오피넷(유가)·환경부(충전 요금) 최신값으로 고쳐 쓰세요.</p>
+   </div>
+  </div>`;
+}
+function addRow(kind){
+  const use = state.cond.purpose;
+  state[kind].push(kind === 'cases' ? {id:uid('c'), year:new Date().getFullYear() - 1, use, model:'', price:0, score:3, memo:''} : {id:uid('p'), use, model:'', qty:1, when:'', memo:''});
+  save(); render();
+}
+function delRow(kind, i){ if (confirm('이 행을 삭제할까요?')) { state[kind].splice(i, 1); save(); render(); } }
+function addVehicle(){
+  state.vehicles.push({id:uid('v'), use:state.cond.purpose, maker:'', model:'새 차량', trim:'', cls:'승용', fuel:'가솔린', trans:'자동', drive:'2WD', seats:5, payload:0, eff:10, maint:60, verified:false, note:'사용자 추가'});
+  save(); render(); toast('차량을 추가했습니다. 표 맨 아래에서 제원을 입력하세요.');
+}
+function delVehicle(i){
+  const v = state.vehicles[i];
+  if (!confirm(`'${vehName(v)}'을(를) 차량 DB에서 삭제할까요?`)) return;
+  state.vehicles.splice(i, 1); delete state.prices[v.id]; delete state.excluded[v.id];
+  state.used = state.used.filter(u => u.baseId !== v.id);
+  save(); render();
+}
+function resetVehicles(){ if (confirm('차량 DB를 기본값으로 되돌릴까요? 직접 추가·수정한 차량은 사라집니다.')) { state.vehicles = clone(DEFAULT_VEHICLES); save(); render(); } }
+function resetRules(){ if (confirm('면허 규칙을 기본값으로 되돌릴까요?')) { state.licenseRules = clone(DEFAULT_LICENSE_RULES); save(); render(); } }
+function resetEnergy(){ if (confirm('에너지 단가를 기본값으로 되돌릴까요?')) { state.energy = clone(DEFAULT_ENERGY); save(); render(); } }
+function loadHistory(id){
+  const h = state.history.find(x => x.id === id); if (!h) return;
+  Object.assign(state, clone(h.snapshot)); save(); toast('저장한 평가 조건을 불러왔습니다.'); go('rank');
+}
+function delHistory(id){ if (confirm('이 평가 이력을 삭제할까요?')) { state.history = state.history.filter(x => x.id !== id); save(); render(); } }
+
+/* JSON 내보내기·가져오기 */
+function exportPayload(type){
+  const s = state, base = {schemaVersion:SCHEMA_VERSION, app:'부대차량구매도우미', type, exportedAt:new Date().toISOString()};
+  if (type === 'vehicles') return Object.assign(base, {vehicles:s.vehicles});
+  return Object.assign(base, {profile:s.profile, cond:s.cond, weights:s.weights, prices:s.prices, excluded:s.excluded, used:s.used,
+    vehicles:s.vehicles, licenseRules:s.licenseRules, energy:s.energy, cases:s.cases, plans:s.plans, history:s.history});
+}
+function downloadJson(name, obj){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+const stamp = () => today().replace(/\./g, '');
+function exportAll(){
+  downloadJson(`부대차량구매도우미_전체_${stamp()}.json`, exportPayload('all'));
+  state.meta.lastBackup = new Date().toISOString(); save(); toast('전체 데이터를 JSON 파일로 내보냈습니다.');
+}
+function exportVehicles(){ downloadJson(`부대차량구매도우미_차량DB_${stamp()}.json`, exportPayload('vehicles')); toast('차량 DB를 JSON 파일로 내보냈습니다.'); }
+function mergeById(local, incoming, replace){
+  const out = local.slice();
+  for (const it of incoming || []) {
+    if (!it || typeof it !== 'object') continue;
+    const i = out.findIndex(x => x.id === it.id);
+    if (i < 0) out.push(it); else if (replace) out[i] = it;
+  }
+  return out;
+}
+function importData(text, mode){
+  let d;
+  try { d = JSON.parse(text); } catch (e) { throw new Error('JSON 형식이 아닙니다.'); }
+  if (!d || typeof d.schemaVersion !== 'number') throw new Error('이 도구의 파일이 아닙니다 (schemaVersion 없음).');
+  if (d.schemaVersion > SCHEMA_VERSION) throw new Error(`더 새 버전(schemaVersion ${d.schemaVersion})의 파일입니다. 최신 도구로 여세요.`);
+  const vehiclesOnly = d.type === 'vehicles';
+  if (mode === 'overwrite') {
+    if (vehiclesOnly) state.vehicles = Array.isArray(d.vehicles) ? d.vehicles : state.vehicles;
+    else { const meta = state.meta; state = normalize(d); state.meta = meta; }
+  } else {
+    state.vehicles = mergeById(state.vehicles, d.vehicles, true);
+    if (!vehiclesOnly) {
+      state.cases = mergeById(state.cases, d.cases, false);
+      state.plans = mergeById(state.plans, d.plans, false);
+      state.history = mergeById(state.history, d.history, false);
+    }
+  }
+  save();
+  return vehiclesOnly ? `차량 DB ${(d.vehicles || []).length}대` : '전체 데이터';
+}
+function importFile(input){
+  const f = input.files && input.files[0]; if (!f) return;
+  const mode = $('#impMode').value;
+  if (mode === 'overwrite' && !confirm('덮어쓰기는 현재 데이터를 파일 내용으로 교체합니다. 계속할까요?')) { input.value = ''; return; }
+  const rd = new FileReader();
+  rd.onload = () => {
+    try { const what = importData(rd.result, mode); render(); toast(`${what}를 가져왔습니다 (${mode === 'merge' ? '병합' : '덮어쓰기'}).`); }
+    catch (e) { toast('가져오기 실패: ' + e.message); }
+    input.value = '';
+  };
+  rd.onerror = () => toast('파일을 읽지 못했습니다.');
+  rd.readAsText(f, 'utf-8');
+}
+
+/* 입력 바인딩: data-k 경로에 값을 저장하고 자동 저장 */
+function setPath(path, val){
+  const ks = path.split('.'); let o = state;
+  for (let i = 0; i < ks.length - 1; i++) { if (o[ks[i]] == null) o[ks[i]] = {}; o = o[ks[i]]; }
+  o[ks[ks.length - 1]] = val;
+}
+function readVal(el){
+  const t = el.dataset.t;
+  if (t === 'bool') return el.checked;
+  if (t === 'bool01') return el.value === '1';
+  if (t === 'num') return el.value === '' ? 0 : num(el.value);
+  if (t === 'numnull') return el.value === '' ? null : num(el.value);
+  return el.value;
+}
+function onBound(e){
+  const el = e.target, k = el.dataset && el.dataset.k;
+  if (!k) return;
+  const isChoice = el.tagName === 'SELECT' || el.type === 'checkbox';
+  if ((e.type === 'input') === isChoice) return; // 선택형은 change, 입력형은 input 이벤트만 처리
+  if (k === 'cond.perUnitBudget') state.cond.perUnitOverride = true;
+  setPath(k, readVal(el));
+  save();
+  if (el.dataset.rerender) { render(); return; }
+  if (k.startsWith('profile.licenses')) { const b = $('#licBar'); if (b) b.innerHTML = licenseBar(); }
+  if ((k === 'cond.qty' || k === 'profile.totalBudget') && !state.cond.perUnitOverride) {
+    const pu = $('#perUnit'); if (pu) pu.value = perUnitBudget();
+    const h = $('#perUnitHint'); if (h) h.textContent = `총예산 ${fmt(state.profile.totalBudget)}만 원 ÷ ${state.cond.qty}대 자동 계산`;
+  }
+  if (k === 'cond.perUnitBudget') { const h = $('#perUnitHint'); if (h) h.innerHTML = '직접 수정함 · <a href="#" onclick="resetPerUnit();return false">자동 계산으로</a>'; }
+  if (k.startsWith('weights.')) { const id = k.split('.')[1]; $('#wv-' + id).textContent = num(state.weights[id]) + '%'; $('#wsum').innerHTML = weightSumHtml(); }
+  const live = $('#live'); if (live) live.innerHTML = liveSummary();
+}
+document.addEventListener('input', onBound);
+document.addEventListener('change', onBound);
+
+renderNav(); render(); updateTopbar();
+</script>
+</body>
+</html>
