@@ -2,6 +2,8 @@
 official-photos/
 dist/
 public/
+# 공식 사진이 들어간 갤러리 제출용 썸네일
+submission/
 
 # 로컬 도구 설정
 .claude/

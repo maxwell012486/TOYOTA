@@ -597,6 +597,9 @@ const OFFICIAL = Object.fromEntries(Object.entries({
 }).filter(([,v])=>!v.startsWith('__')).map(([k,v])=>[k,'data:image/jpeg;base64,'+v]));
 const PHOTO_CREDIT = '사진: 한국토요타 (toyota.co.kr)';
 const isOfficial = c => !c.photo && !!OFFICIAL[c.id];
+/* 크게 쓰는 자리(제목·추천·점수 상자)에는 영문 모델명을 쓴다. 문장 속 이름은 짧은 이름 그대로. */
+const BIG_NAME = { camry:'CAMRY', rav4:'RAV4' };
+const bigName = c => BIG_NAME[c.id] || c.short || c.name;
 const photoSrc = c => c.photo || OFFICIAL[c.id] || illusSrc(c);
 const photoImg = (c, cls='') => `<img class="${cls}" src="${esc(photoSrc(c))}" data-fallback="${esc(illusSrc(c))}" alt="${esc(c.name)} 사진" loading="eager">`;
 document.addEventListener('error', e=>{
@@ -658,14 +661,14 @@ function step1(){
   const row = (label, fn, win=-1, txt=false) => `<tr><th scope="row">${label}</th>${cs.map((c,i)=>`<td class="cc${c.color} ${i===win?'win':''} ${txt?'txt':''}">${fn(c,i)}</td>`).join('')}</tr>`;
   const mm = v => num(v) ? f0(num(v)) : '—';
   return `
-  <section class="cover"><h1 class="h">1. ${esc(cs.map(c=>c.short||c.name).join(' vs '))}, 나란히 보기</h1>
+  <section class="cover"><h1 class="h">1. ${esc(cs.map(bigName).join(' vs '))}, 나란히 보기</h1>
   <p class="lede">분당지점 견적 기준이에요. 카드의 ‘수정’에서 값과 사진을 바꿀 수 있어요.</p></section>
   <section>
     <div class="cars">${cs.map((c,i)=>`
       <article class="car cc${c.color}">
         ${photoImg(c)}
         <div class="body">
-          <div><span class="tag-car">${esc(c.short||c.name)}</span><div class="nm">${esc(c.name)}</div><div class="meta">${esc(c.year)}년형 · ${esc(c.body)}</div>${isOfficial(c) ? '<div class="credit">사진: 한국토요타</div>' : ''}</div>
+          <div><span class="tag-car">${esc(bigName(c))}</span><div class="nm">${esc(c.name)}</div><div class="meta">${esc(c.year)}년형 · ${esc(c.body)}</div>${isOfficial(c) ? '<div class="credit">사진: 한국토요타</div>' : ''}</div>
           <div class="quote">
             <div><span>출고가</span><span class="num">${fm(num(c.price))}만</span></div>
             <div class="disc"><span>분당 할인</span><span class="num">−${fm(num(c.discount))}만</span></div>
@@ -860,8 +863,8 @@ function step4(){
       <div class="eyebrow">우리 집 차 결정 · ${ds}</div>
       ${close
         ? `<h1 class="sc-head">박빙이에요.<br>시승을 한 번 더 해 보세요</h1>`
-        : `<span class="verdict cc${rec.car.color}">우리 집 추천</span><h1 class="sc-head cc${rec.car.color}">추천: <em>${esc(rn)}</em></h1>`}
-      <div class="sc-vs"><span class="cc${rec.car.color}">${esc(rn)}<b>${f1(rec.score)}<small>점</small></b></span><span class="cc${rival.car.color}">${esc(vn)}<b>${f1(rival.score)}<small>점</small></b></span></div>
+        : `<span class="verdict cc${rec.car.color}">우리 집 추천</span><h1 class="sc-head cc${rec.car.color}">추천: <em>${esc(bigName(rec.car))}</em></h1>`}
+      <div class="sc-vs"><span class="cc${rec.car.color}">${esc(bigName(rec.car))}<b>${f1(rec.score)}<small>점</small></b></span><span class="cc${rival.car.color}">${esc(bigName(rival.car))}<b>${f1(rival.score)}<small>점</small></b></span></div>
     </div>
     <div class="sc-photo">${photoImg(rec.car, 'photo')}</div>
     ${R.cars.length > 2 ? `<div class="panel neutral"><h3 class="band">전체 순위</h3><div class="bars" style="padding:12px 16px 14px">${R.ranked.map(x=>`<div class="bar cc${x.car.color}"><span class="who">${esc(x.car.short||x.car.name)}</span><span class="track"><span class="fill" style="display:block;width:${x.score/maxScore*100}%"></span></span><b>${f1(x.score)}</b></div>`).join('')}</div></div>` : ''}
