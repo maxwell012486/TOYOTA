@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>부대 차량 구매 도우미 썸네일</title>
+<!-- 갤러리 썸네일 원본 (1280×800). Edge 헤드리스로 thumbnail.png를 만든다 -->
+<style>
+html,body{margin:0;padding:0;background:#0c110a}
+body{width:1280px;height:800px;overflow:hidden;font-family:"Malgun Gothic","맑은 고딕",sans-serif}
+svg{display:block}
+</style>
+</head>
+<body>
+<svg width="1280" height="800" viewBox="0 0 1280 800" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#0d150e"/>
+    <stop offset=".45" stop-color="#22301f"/>
+    <stop offset=".72" stop-color="#6b5a2c"/>
+    <stop offset=".86" stop-color="#d9913f"/>
+    <stop offset="1" stop-color="#f3b45a"/>
+  </linearGradient>
+  <radialGradient id="sun" cx="560" cy="640" r="420" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#ffd27a" stop-opacity=".85"/>
+    <stop offset=".35" stop-color="#f0a043" stop-opacity=".35"/>
+    <stop offset="1" stop-color="#f0a043" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="shade" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#0b120a" stop-opacity=".92"/>
+    <stop offset=".5" stop-color="#0b120a" stop-opacity=".55"/>
+    <stop offset=".75" stop-color="#0b120a" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#5e6f42"/>
+    <stop offset="1" stop-color="#1f2918"/>
+  </linearGradient>
+  <linearGradient id="canvasG" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#76844f"/>
+    <stop offset="1" stop-color="#252e1a"/>
+  </linearGradient>
+  <!-- 디지털 위장 무늬 -->
+  <pattern id="camo" width="48" height="48" patternUnits="userSpaceOnUse">
+    <rect width="48" height="48" fill="#6d7b4b"/>
+    <path d="M0 0h8v8H0zM8 8h8v8H8zM24 4h12v8H24zM36 12h8v8h-8zM4 24h12v8H4zM16 32h8v8h-8zM32 28h8v12h-8zM40 40h8v8h-8z" fill="#4a5734"/>
+    <path d="M16 0h8v4h-8zM0 12h4v8H0zM28 16h8v8h-8zM12 16h8v8h-8zM40 24h8v4h-8zM0 40h12v8H0zM24 40h8v8h-8z" fill="#8d9665"/>
+    <path d="M20 8h4v8h-4zM36 0h4v4h-4zM8 36h4v4H8zM28 36h4v4h-4zM44 16h4v8h-4z" fill="#2f3820"/>
+  </pattern>
+  <pattern id="camoDark" width="48" height="48" patternUnits="userSpaceOnUse">
+    <rect width="48" height="48" fill="#4f5b36"/>
+    <path d="M0 0h8v8H0zM24 4h12v8H24zM4 24h12v8H4zM32 28h8v12h-8z" fill="#36401f"/>
+    <path d="M16 0h8v4h-8zM28 16h8v8h-8zM0 40h12v8H0z" fill="#6d7650"/>
+  </pattern>
+  <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#f4c7a1"/>
+    <stop offset="1" stop-color="#e2a77e"/>
+  </linearGradient>
+  <filter id="soft" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity=".45"/></filter>
+</defs>
+
+<!-- 하늘·산 -->
+<rect width="1280" height="800" fill="url(#sky)"/>
+<rect width="1280" height="800" fill="url(#sun)"/>
+<g fill="#fff" opacity=".7"><circle cx="720" cy="60" r="1.6"/><circle cx="640" cy="120" r="1.2"/><circle cx="900" cy="40" r="1.4"/><circle cx="1180" cy="90" r="1.2"/><circle cx="780" cy="170" r="1"/><circle cx="1060" cy="30" r="1"/></g>
+<path d="M0 600 L90 540 L170 575 L260 505 L360 560 L450 520 L560 570 L660 500 L760 555 L860 515 L980 565 L1080 520 L1180 560 L1280 530 V800 H0Z" fill="#3a3a22" opacity=".75"/>
+<path d="M0 650 L120 600 L220 630 L330 585 L440 625 L560 595 L700 640 L820 600 L960 640 L1100 605 L1280 630 V800 H0Z" fill="#1d2616"/>
+<rect y="738" width="1280" height="62" fill="#0b100a"/>
+<path d="M0 738 H1280" stroke="#e3a24d" stroke-opacity=".35" stroke-width="2"/>
+
+<!-- 군용 전술차량 (소형) -->
+<g transform="translate(30,0)">
+  <path d="M290 470 L300 600" stroke="#141b10" stroke-width="3"/>
+  <path d="M40 700 L40 650 Q42 638 56 636 L100 630 L132 588 Q138 580 150 580 L262 580 Q272 580 274 590 L282 632 L314 640 Q324 644 324 656 L324 700 Z" fill="url(#steel)" stroke="#0c1109" stroke-width="3"/>
+  <path d="M142 592 L170 592 L170 628 L118 628 Z M180 592 L230 592 L230 628 L180 628 Z M240 592 L264 592 L270 628 L240 628 Z" fill="#c98a3f" opacity=".55"/>
+  <path d="M40 662 H324" stroke="#5b6b3d" stroke-width="2" opacity=".6"/>
+  <rect x="34" y="676" width="20" height="18" rx="3" fill="#0e140b"/>
+  <circle cx="52" cy="658" r="6" fill="#ffd27a"/>
+  <g fill="#0b0f08" stroke="#2d3820" stroke-width="4"><circle cx="102" cy="704" r="34"/><circle cx="262" cy="704" r="34"/></g>
+  <g fill="#4b5737"><circle cx="102" cy="704" r="13"/><circle cx="262" cy="704" r="13"/></g>
+  <path d="M138 580 L262 580" stroke="#f7c06a" stroke-opacity=".85" stroke-width="3"/>
+</g>
+
+<!-- 군용 카고 트럭 (중형) -->
+<g transform="translate(360,0)">
+  <!-- 적재함 덮개 -->
+  <path d="M150 518 Q154 496 176 496 L470 496 Q492 496 494 518 L498 676 L146 676 Z" fill="url(#canvasG)" stroke="#0c1109" stroke-width="3"/>
+  <g stroke="#1c2414" stroke-width="3" opacity=".8"><path d="M210 498 V676 M270 498 V676 M330 498 V676 M390 498 V676 M450 498 V676"/></g>
+  <path d="M176 500 L470 500" stroke="#f7c06a" stroke-opacity=".85" stroke-width="3"/>
+  <rect x="146" y="636" width="352" height="40" fill="#2c361f" stroke="#0c1109" stroke-width="3"/>
+  <!-- 운전석 -->
+  <path d="M8 700 L8 600 Q8 588 18 584 L46 560 Q54 552 66 552 L134 552 Q144 552 144 562 L144 700 Z" fill="url(#steel)" stroke="#0c1109" stroke-width="3"/>
+  <path d="M54 568 L130 568 L130 618 L28 618 Z" fill="#c98a3f" opacity=".55"/>
+  <path d="M90 568 V618" stroke="#151c11" stroke-width="4"/>
+  <g stroke="#0c1109" stroke-width="3"><path d="M10 640 H44 M10 652 H44 M10 664 H44"/></g>
+  <circle cx="22" cy="626" r="7" fill="#ffd27a"/>
+  <rect x="0" y="680" width="40" height="18" rx="3" fill="#0e140b"/>
+  <rect x="8" y="676" width="500" height="22" fill="#151c11"/>
+  <g fill="#0b0f08" stroke="#2d3820" stroke-width="4"><circle cx="78" cy="706" r="38"/><circle cx="330" cy="706" r="38"/><circle cx="420" cy="706" r="38"/></g>
+  <g fill="#4b5737"><circle cx="78" cy="706" r="15"/><circle cx="330" cy="706" r="15"/><circle cx="420" cy="706" r="15"/></g>
+  <path d="M66 552 L134 552" stroke="#f7c06a" stroke-opacity=".85" stroke-width="3"/>
+</g>
+
+<!-- 글자 가독성용 그늘 -->
+<rect width="1280" height="520" fill="url(#shade)" opacity=".7"/>
+
+<!-- 제목·기능 -->
+<g>
+  <rect x="60" y="54" width="296" height="36" rx="18" fill="#ffd75e"/>
+  <text x="208" y="78" text-anchor="middle" font-size="17" font-weight="700" fill="#1b2414">국산 차량 · 상급부대 보고용</text>
+  <text x="58" y="172" font-size="82" font-weight="800" fill="#ffffff" letter-spacing="-3">부대 차량</text>
+  <text x="58" y="262" font-size="82" font-weight="800" fill="#ffd75e" letter-spacing="-3">구매 도우미</text>
+  <text x="62" y="306" font-size="21" fill="#e6ecdf">용도·예산·면허·운행 환경을 넣으면 <tspan font-weight="700" fill="#fff">순위·선정 사유·제한사항</tspan>까지 한 번에</text>
+</g>
+<g font-size="19" font-weight="700" fill="#fff">
+  <g transform="translate(60,330)">
+    <rect width="300" height="50" rx="10" fill="#0f170c" fill-opacity=".72" stroke="#8d9665" stroke-opacity=".7"/>
+    <circle cx="27" cy="25" r="15" fill="#ffd75e"/><text x="27" y="31" text-anchor="middle" font-size="16" fill="#1b2414">1</text>
+    <text x="54" y="32">용도 카드 5종 · 국산 37종</text>
+  </g>
+  <g transform="translate(374,330)">
+    <rect width="300" height="50" rx="10" fill="#0f170c" fill-opacity=".72" stroke="#8d9665" stroke-opacity=".7"/>
+    <circle cx="27" cy="25" r="15" fill="#ffd75e"/><text x="27" y="31" text-anchor="middle" font-size="16" fill="#1b2414">2</text>
+    <text x="54" y="32">가중치 100점 자동 순위</text>
+  </g>
+  <g transform="translate(60,392)">
+    <rect width="300" height="50" rx="10" fill="#0f170c" fill-opacity=".72" stroke="#8d9665" stroke-opacity=".7"/>
+    <circle cx="27" cy="25" r="15" fill="#ffd75e"/><text x="27" y="31" text-anchor="middle" font-size="16" fill="#1b2414">3</text>
+    <text x="54" y="32">면허·예산·충전 인프라 판정</text>
+  </g>
+  <g transform="translate(374,392)">
+    <rect width="300" height="50" rx="10" fill="#0f170c" fill-opacity=".72" stroke="#8d9665" stroke-opacity=".7"/>
+    <circle cx="27" cy="25" r="15" fill="#ffd75e"/><text x="27" y="31" text-anchor="middle" font-size="16" fill="#1b2414">4</text>
+    <text x="54" y="32">선정 사유 3줄 · 대책 자동</text>
+  </g>
+  <g transform="translate(60,454)">
+    <rect width="300" height="50" rx="10" fill="#0f170c" fill-opacity=".72" stroke="#8d9665" stroke-opacity=".7"/>
+    <circle cx="27" cy="25" r="15" fill="#ffd75e"/><text x="27" y="31" text-anchor="middle" font-size="16" fill="#1b2414">5</text>
+    <text x="54" y="32">A4 PDF · 개조식 문안 복사</text>
+  </g>
+  <g transform="translate(374,454)">
+    <rect width="300" height="50" rx="10" fill="#0f170c" fill-opacity=".72" stroke="#8d9665" stroke-opacity=".7"/>
+    <circle cx="27" cy="25" r="15" fill="#ffd75e"/><text x="27" y="31" text-anchor="middle" font-size="16" fill="#1b2414">6</text>
+    <text x="54" y="32">JSON으로 부대 간 공유</text>
+  </g>
+</g>
+<text x="60" y="776" font-size="17" fill="#e6ecdf" opacity=".9">더블클릭 실행 · 인터넷 없이 동작 · 외부 전송 없음 · <tspan fill="#ffb4a8" font-weight="700">비밀 정보 입력 금지</tspan></text>
+
+<!-- 생각 풍선 -->
+<g filter="url(#soft)">
+  <g fill="#fbfaf3" stroke="#1b2214" stroke-width="4">
+    <circle cx="912" cy="160" r="70"/><circle cx="1000" cy="110" r="78"/><circle cx="1100" cy="118" r="72"/><circle cx="1180" cy="170" r="60"/>
+    <circle cx="1120" cy="236" r="66"/><circle cx="1010" cy="246" r="70"/><circle cx="920" cy="230" r="56"/>
+  </g>
+  <g fill="#fbfaf3">
+    <circle cx="912" cy="160" r="66"/><circle cx="1000" cy="110" r="74"/><circle cx="1100" cy="118" r="68"/><circle cx="1180" cy="170" r="56"/>
+    <circle cx="1120" cy="236" r="62"/><circle cx="1010" cy="246" r="66"/><circle cx="920" cy="230" r="52"/>
+    <rect x="930" y="120" width="230" height="140"/>
+  </g>
+  <circle cx="1000" cy="326" r="13" fill="#fbfaf3" stroke="#1b2214" stroke-width="4"/>
+  <circle cx="1020" cy="352" r="8" fill="#fbfaf3" stroke="#1b2214" stroke-width="3"/>
+</g>
+<!-- 풍선 안: 후보 차량 아이콘과 미니 순위 -->
+<g fill="none" stroke="#2b3a24" stroke-width="3.5" stroke-linejoin="round">
+  <g transform="translate(882,82) scale(.62)"><path d="M10 48 V40 Q12 34 22 32 L40 30 L56 17 Q60 14 68 14 H90 Q97 14 101 18 L114 30 Q128 32 130 38 V48 Z"/><circle cx="38" cy="50" r="9" fill="#fbfaf3"/><circle cx="104" cy="50" r="9" fill="#fbfaf3"/></g>
+  <g transform="translate(990,80) scale(.62)"><path d="M8 50 V22 Q8 12 18 12 H112 Q120 12 124 20 L132 36 V50 Z"/><circle cx="34" cy="52" r="9" fill="#fbfaf3"/><circle cx="108" cy="52" r="9" fill="#fbfaf3"/></g>
+  <g transform="translate(1098,80) scale(.62)"><path d="M100 50 V18 Q100 12 106 12 H120 Q126 12 128 18 L132 34 V50 Z"/><path d="M8 50 V34 H100 V50 Z"/><circle cx="30" cy="52" r="8" fill="#fbfaf3"/><circle cx="114" cy="52" r="8" fill="#fbfaf3"/></g>
+</g>
+<g font-size="34" font-weight="900" fill="#c0392b"><text x="969" y="112">?</text><text x="1078" y="112">?</text></g>
+<g font-size="15" font-weight="700" fill="#1b2414">
+  <text x="900" y="160">1위</text><rect x="934" y="147" width="176" height="16" rx="3" fill="#3d5a3a"/><text x="1118" y="160">87.8</text>
+  <text x="900" y="190">2위</text><rect x="934" y="177" width="160" height="16" rx="3" fill="#3d5a3a"/><rect x="1094" y="177" width="10" height="16" fill="#c0392b"/><text x="1118" y="190">86.7</text>
+  <text x="900" y="220">3위</text><rect x="934" y="207" width="110" height="16" rx="3" fill="#3d5a3a"/><rect x="1044" y="207" width="36" height="16" fill="#c0392b" opacity=".85"/><text x="1118" y="220">69.0</text>
+  <rect x="926" y="234" width="114" height="24" rx="5" fill="#fde2df" stroke="#a8231b" stroke-width="1.5"/><text x="934" y="252" font-size="14" fill="#a8231b">✕ 면허 부적합</text>
+  <rect x="1048" y="234" width="100" height="24" rx="5" fill="#dff1e4" stroke="#1d6b37" stroke-width="1.5"/><text x="1058" y="252" font-size="14" fill="#1d6b37">○ 예산 이내</text>
+</g>
+
+<!-- 고민하는 군인 -->
+<g transform="translate(852,252) scale(.92)" stroke="#1b2214" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" filter="url(#soft)">
+  <!-- 몸통 (전투복) -->
+  <path d="M24 570 C30 452 78 390 150 366 L292 366 C364 390 410 452 416 570 Z" fill="url(#camo)"/>
+  <path d="M150 366 C120 380 96 400 84 430" fill="none" stroke-width="3" opacity=".6"/>
+  <!-- 태극기 패치 -->
+  <g transform="translate(70,450) rotate(-14)" stroke-width="2"><rect width="46" height="30" rx="3" fill="#f6f3e8"/><circle cx="23" cy="15" r="8" fill="#c0392b" stroke="none"/><path d="M15 15 A8 8 0 0 0 31 15 A4 4 0 0 0 23 15 A4 4 0 0 1 15 15Z" fill="#1f4e9a" stroke="none"/></g>
+  <!-- 목·속옷 -->
+  <path d="M190 334 L250 334 L254 372 L220 404 L186 372 Z" fill="url(#skin)"/>
+  <path d="M186 370 L220 404 L254 370 L246 362 L220 386 L194 362 Z" fill="#3a4227" stroke-width="3"/>
+  <!-- 깃 -->
+  <path d="M184 364 L220 426 L170 404 L146 366 Z" fill="url(#camoDark)"/>
+  <path d="M256 364 L220 426 L270 404 L294 366 Z" fill="url(#camoDark)"/>
+  <!-- 명찰·계급장 -->
+  <rect x="292" y="414" width="86" height="22" rx="3" fill="#e9e3c6" stroke-width="2.5"/>
+  <text x="335" y="431" text-anchor="middle" font-size="14" font-weight="700" fill="#1b2214" stroke="none">OO부대</text>
+  <rect x="200" y="436" width="40" height="30" rx="3" fill="#2f3820" stroke-width="2.5"/>
+  <path d="M208 446 L220 452 L232 446 M208 456 L220 462 L232 456" stroke="#e8d58a" stroke-width="3" fill="none"/>
+
+  <!-- 귀·얼굴 -->
+  <ellipse cx="153" cy="280" rx="13" ry="20" fill="url(#skin)"/>
+  <ellipse cx="287" cy="280" rx="13" ry="20" fill="url(#skin)"/>
+  <path d="M156 220 C150 300 178 350 220 354 C262 350 290 300 284 220 Z" fill="url(#skin)"/>
+  <!-- 볼 홍조 -->
+  <g stroke="none" fill="#e8806a" opacity=".35"><ellipse cx="180" cy="302" rx="16" ry="9"/><ellipse cx="264" cy="300" rx="16" ry="9"/></g>
+  <!-- 눈썹 (한쪽은 찌푸리고 한쪽은 치켜듦) -->
+  <path d="M168 254 Q186 248 206 258" fill="none" stroke-width="7"/>
+  <path d="M234 248 Q254 234 276 243" fill="none" stroke-width="7"/>
+  <!-- 눈 (생각 풍선 쪽을 올려다봄) -->
+  <ellipse cx="188" cy="276" rx="14" ry="15" fill="#fff" stroke-width="3"/>
+  <ellipse cx="254" cy="273" rx="14" ry="16" fill="#fff" stroke-width="3"/>
+  <circle cx="195" cy="270" r="7.5" fill="#2a1d14" stroke="none"/>
+  <circle cx="261" cy="266" r="7.5" fill="#2a1d14" stroke="none"/>
+  <circle cx="197" cy="267" r="2.5" fill="#fff" stroke="none"/>
+  <circle cx="263" cy="263" r="2.5" fill="#fff" stroke="none"/>
+  <path d="M174 291 Q188 297 202 291" fill="none" stroke-width="2" opacity=".5"/>
+  <!-- 코·입 -->
+  <path d="M222 282 Q212 304 220 310 Q228 314 236 308" fill="none" stroke-width="3.5"/>
+  <path d="M186 330 Q200 323 216 332" fill="none" stroke-width="4"/>
+  <!-- 철모 -->
+  <path d="M140 214 C136 150 176 108 222 108 C268 108 308 150 302 214 C306 218 312 222 320 228 C270 240 172 240 120 228 C128 222 134 218 140 214 Z" fill="url(#camo)"/>
+  <path d="M140 190 C190 176 252 176 302 190" fill="none" stroke-width="10" stroke="#2f3820"/>
+  <path d="M140 190 C190 176 252 176 302 190" fill="none" stroke-width="3" stroke="#8d9665" stroke-dasharray="6 8"/>
+  <path d="M168 140 C182 126 200 120 216 120" fill="none" stroke="#a9b183" stroke-width="5" opacity=".6"/>
+  <!-- 턱끈 -->
+  <path d="M150 232 C150 300 166 336 198 348" fill="none" stroke="#2a2f1e" stroke-width="6"/>
+  <path d="M290 232 C290 300 274 336 242 348" fill="none" stroke="#2a2f1e" stroke-width="6"/>
+  <!-- 땀방울 -->
+  <path d="M318 196 Q306 220 318 230 Q330 220 318 196 Z" fill="#9edbff" stroke-width="3"/>
+  <path d="M332 236 Q324 252 332 258 Q340 252 332 236 Z" fill="#9edbff" stroke-width="3"/>
+
+  <!-- 가슴 앞으로 팔짱 낀 팔 -->
+  <path d="M406 452 C364 476 226 506 118 512 L116 554 C232 552 372 528 414 504 Z" fill="url(#camo)"/>
+  <ellipse cx="112" cy="532" rx="26" ry="22" fill="url(#skin)"/>
+  <!-- 턱을 괸 팔 -->
+  <path d="M86 548 L150 556 L252 384 L202 362 Z" fill="url(#camo)"/>
+  <path d="M86 548 L150 556" fill="none" stroke-width="6" stroke="#2f3820"/>
+  <!-- 주먹과 검지 -->
+  <path d="M200 352 C196 332 218 324 242 332 C264 340 266 364 254 380 C242 394 208 392 200 378 Z" fill="url(#skin)"/>
+  <path d="M208 358 Q224 354 240 360 M206 370 Q222 366 242 372" fill="none" stroke-width="2.5" opacity=".7"/>
+  <path d="M240 336 C244 316 252 300 262 304 C272 308 266 326 258 344 Z" fill="url(#skin)"/>
+</g>
+</svg>
+</body>
+</html>
