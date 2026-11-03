@@ -1,0 +1,7 @@
+# 배포에는 앱 파일만 올린다
+build.ps1
+README.md
+official-photos/
+dist/
+.claude/
+.env*

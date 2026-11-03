@@ -4,3 +4,9 @@ dist/
 
 # 로컬 도구 설정
 .claude/
+.vercel/
+
+# 환경 변수 (비밀값은 올리지 않는다)
+.env
+.env.local
+.env.*.local
