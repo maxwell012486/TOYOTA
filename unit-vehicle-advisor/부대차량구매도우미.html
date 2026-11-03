@@ -58,6 +58,7 @@ h3{margin:0 0 10px;font-size:16px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;margin-bottom:18px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
 .grid-main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:18px;align-items:start}
+@media (max-width:1500px){.grid-main{grid-template-columns:minmax(0,1fr)}}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
 .field label,.lbl{font-weight:600;font-size:13px;color:#39424f}
@@ -670,9 +671,9 @@ function viewRank(){
   ${warnings(r)}
   <div class="grid-main"><div>
    <div class="card"><div class="row" style="margin-bottom:10px"><h3 style="margin:0">순위표</h3><div style="flex:1"></div><button onclick="saveHistory()">이 평가 이력 저장</button><button class="primary" onclick="go('report')">보고서로 →</button></div>
-    <table><tr><th>순위</th><th>차량 (연료·변속기)</th><th>가격</th><th style="width:30%">최종 점수 (100점)</th><th class="num">감점</th><th>상태</th></tr>
+    <table><tr><th>순위</th><th style="min-width:210px">차량 (연료·변속기)</th><th style="white-space:nowrap">가격</th><th style="width:24%">최종 점수 (100점)</th><th class="num">감점</th><th>상태</th></tr>
     ${list.map(x => `<tr><td class="score">${x.rank}</td><td><b>${esc(x.name)}</b><br><span class="unitlbl">${esc(vehSpec(x.veh))} · 운전 가능 ${x.drivers}명</span></td>
-      <td class="num">${fmt(x.price)}만 원</td>
+      <td class="num" style="white-space:nowrap">${fmt(x.price)}만 원</td>
       <td><div class="row" style="flex-wrap:nowrap"><div class="bar big" style="flex:1"><i style="width:${x.final}%"></i>${x.penalty ? `<i class="pen" style="left:${x.final}%;width:${Math.min(x.penalty, 100 - x.final)}%"></i>` : ''}</div><span class="score" style="width:46px;text-align:right">${fmt(x.final,1)}</span></div></td>
       <td class="num">${x.penalty ? `<b style="color:var(--red)">−${x.penalty}</b>` : '0'}</td>
       <td>${x.tags.map(tag).join('')}</td></tr>`).join('')}
