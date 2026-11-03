@@ -36,6 +36,25 @@ RAV4 XLE HEV와 Camry XLE HEV를 "우리 집 기준"으로 비교해서 하나�
 powershell -ExecutionPolicy Bypass -File build.ps1
 ```
 
+## 배포 (Vercel)
+
+GitHub `main`에 push하면 Vercel이 자동으로 배포합니다: https://car-decision-helper-eight.vercel.app
+
+빌드는 `scripts/build-vercel.mjs`가 `car-decision-helper.html`에 Supabase 설정을 넣어 `public/index.html`을 만듭니다.
+Vercel 프로젝트의 Environment Variables에 아래 두 값을 등록해야 클라우드 저장이 켜집니다 (`.env.example` 참고).
+
+| 이름 | 값 |
+|---|---|
+| `SUPABASE_URL` | Supabase 프로젝트 주소 (`https://<ref>.supabase.co`) |
+| `SUPABASE_PUBLISHABLE_KEY` | Supabase 공개 키 (`sb_publishable_...`) |
+
+## 클라우드 저장 (Supabase)
+
+설정 화면에서 이메일 링크로 로그인하면 입력값이 `car_decisions` 테이블에 사용자별로 저장되고, 다른 기기에서 로그인하면 같은 내용을 불러옵니다.
+테이블과 RLS 정책은 `supabase/migrations/`에 있고, 본인 행만 읽고 쓸 수 있습니다. 로그인하지 않으면 지금처럼 브라우저에만 저장됩니다.
+
+Supabase Authentication → URL Configuration에 Site URL과 Redirect URL로 배포 주소를 등록해 두어야 로그인 링크가 앱으로 돌아옵니다.
+
 ## 기술
 
-Vanilla JS, [Chart.js](https://www.chartjs.org/) 4.4.1, [html2canvas](https://html2canvas.hertzen.com/) 1.4.1 (cdnjs에서 불러옴)
+Vanilla JS, [Chart.js](https://www.chartjs.org/) 4.4.1, [html2canvas](https://html2canvas.hertzen.com/) 1.4.1 (cdnjs), [supabase-js](https://supabase.com/docs/reference/javascript) 2.49.4 (jsDelivr)

@@ -175,9 +175,9 @@ input[type=range]{width:100%;accent-color:var(--accent);height:28px;margin:0}
 .live{display:flex;flex-wrap:wrap;gap:10px}
 .live span{flex:1 1 40%;background:var(--ct);border-radius:var(--r-sm);padding:10px 12px;display:grid;gap:2px;font-size:12.5px;color:var(--muted)}
 .live b{font-size:22px;font-weight:800;color:var(--cc);line-height:1.2;font-variant-numeric:tabular-nums}
-textarea,input[type=text],input[type=number],input[type=url],select{width:100%;border:1px solid var(--line);background:var(--sunk);border-radius:var(--r-sm);padding:12px 14px;font-size:15px;min-height:48px;transition:border-color .15s,background .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
+textarea,input[type=text],input[type=number],input[type=url],input[type=email],select{width:100%;border:1px solid var(--line);background:var(--sunk);border-radius:var(--r-sm);padding:12px 14px;font-size:15px;min-height:48px;transition:border-color .15s,background .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
 select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 21px,calc(100% - 13px) 21px;background-size:5px 5px;background-repeat:no-repeat;padding-right:34px}
-textarea:focus,input[type=text]:focus,input[type=number]:focus,input[type=url]:focus,select:focus{outline:none;border-color:var(--accent);background-color:var(--surface);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea:focus,input[type=text]:focus,input[type=number]:focus,input[type=url]:focus,input[type=email]:focus,select:focus{outline:none;border-color:var(--accent);background-color:var(--surface);box-shadow:0 0 0 3px var(--accent-soft)}
 ::placeholder{color:var(--muted);opacity:.7}
 textarea{min-height:84px;resize:vertical}
 .field{display:grid;gap:6px}
@@ -282,6 +282,7 @@ textarea{min-height:84px;resize:vertical}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
 <script>
 (function(){
 'use strict';
@@ -321,7 +322,8 @@ function defaults(){
     weights:{price:35, fuel:20, design:15, durability:15, pref:15},
     km:{mon:10, tue:10, wed:10, thu:10, fri:67, sat:10, sun:67},
     gas:1858, region:'경기도 성남시 (분당)', bondRate:12, bondDisc:6, delivery:'2026',
-    memo:{wife:'', kids:''}
+    memo:{wife:'', kids:''},
+    updatedAt:''
   };
 }
 
@@ -383,11 +385,76 @@ function load(){
 let saveTimer = 0, cardDirty = true;
 function save(){
   cardDirty = true;
+  state.updatedAt = new Date().toISOString();
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(()=>{
-    try { localStorage.setItem(KEY, JSON.stringify(state)); }
-    catch(e){ toast('휴대폰 저장 공간이 부족해 자동 저장하지 못했어요. 백업을 내보내 두세요.'); }
-  }, 250);
+  saveTimer = setTimeout(saveLocal, 250);
+  schedulePush();
+}
+function saveLocal(){
+  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  catch(e){ toast('휴대폰 저장 공간이 부족해 자동 저장하지 못했어요. 백업을 내보내 두세요.'); }
+}
+
+/* ---------- 클라우드 저장 (Supabase, 로그인한 사람만) ---------- */
+// Vercel 빌드가 자리표시자를 채운다. 비어 있거나 라이브러리가 없으면 기능을 숨긴다.
+const CLOUD = { url:'__SUPABASE_URL__', key:'__SUPABASE_PUBLISHABLE_KEY__' };
+const cloudOn = !CLOUD.url.startsWith('__') && !CLOUD.key.startsWith('__') && !!(window.supabase && window.supabase.createClient);
+let sb = null, cloudUser = null, cloudMsg = '', pushTimer = 0, linkSent = '';
+function schedulePush(){
+  if (!sb || !cloudUser) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(()=>{ pushNow().catch(()=>{}); }, 2000);
+}
+async function pushNow(){
+  if (!sb || !cloudUser) return false;
+  const { error } = await sb.from('car_decisions').upsert({ user_id: cloudUser.id, state, updated_at: state.updatedAt || new Date().toISOString() });
+  const t = new Date();
+  cloudMsg = error ? '클라우드 저장에 실패했어요. 인터넷 연결을 확인해 주세요.' : `클라우드에 저장됨 · ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+  refreshCloudUI();
+  return !error;
+}
+async function pullNow(force){
+  if (!sb || !cloudUser) return;
+  const { data, error } = await sb.from('car_decisions').select('state, updated_at').eq('user_id', cloudUser.id).maybeSingle();
+  if (error){ cloudMsg = '클라우드에서 불러오지 못했어요.'; refreshCloudUI(); return; }
+  const remoteNewer = data && data.state && (force || !state.updatedAt || new Date(data.updated_at) > new Date(state.updatedAt));
+  if (remoteNewer){
+    state = merge(defaults(), data.state); state.updatedAt = data.updated_at;
+    saveLocal(); cardDirty = true; render();
+    cloudMsg = '클라우드에 저장된 내용을 불러왔어요.'; toast(cloudMsg);
+    refreshCloudUI();
+  } else {
+    await pushNow();
+  }
+}
+function cloudHTML(){
+  if (!cloudOn) return `<p class="note" style="margin:0">이 링크에서는 클라우드 저장을 쓸 수 없어요. Vercel 사이트에서 로그인하면 휴대폰과 PC가 같은 내용을 봐요.</p>`;
+  if (!cloudUser) return `
+    <p class="note" style="margin:0">이메일로 받은 링크로 로그인하면 입력한 내용이 클라우드에 저장돼, 휴대폰과 PC에서 같은 내용을 볼 수 있어요. 내 데이터는 나만 볼 수 있어요.</p>
+    <label class="field"><span>이메일</span><input type="email" id="cloudEmail" autocomplete="email" inputmode="email" placeholder="name@example.com" value="${esc(linkSent)}"></label>
+    <button class="btn primary wide" type="button" id="cloudSend">로그인 링크 받기</button>
+    ${linkSent ? `<p class="note" style="margin:0">${esc(linkSent)} 메일함에서 로그인 링크를 눌러 주세요. 이 브라우저로 다시 열려요.</p>` : ''}`;
+  return `
+    <p style="margin:0;font-size:14px"><b>${esc(cloudUser.email || '로그인됨')}</b>으로 로그인했어요. 입력하면 자동으로 저장돼요.</p>
+    ${cloudMsg ? `<p class="note" style="margin:0">${esc(cloudMsg)}</p>` : ''}
+    <div class="two"><button class="btn wide" type="button" id="cloudPush">지금 저장</button><button class="btn wide" type="button" id="cloudPull">클라우드에서 불러오기</button></div>
+    <button class="btn wide soft" type="button" id="cloudOut">로그아웃</button>`;
+}
+function refreshCloudUI(){ const box = $('#cloudBody'); if (box) box.innerHTML = cloudHTML(); }
+function initCloud(){
+  if (!cloudOn) return;
+  try {
+    sb = window.supabase.createClient(CLOUD.url, CLOUD.key, { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:'implicit' } });
+  } catch(e){ sb = null; return; }
+  sb.auth.onAuthStateChange((evt, session)=>{
+    const before = cloudUser && cloudUser.id;
+    cloudUser = session ? session.user : null;
+    if (cloudUser && cloudUser.id !== before){
+      if (location.hash.includes('access_token')) history.replaceState(null, '', location.pathname + location.search);
+      setTimeout(()=>{ pullNow(false).catch(()=>{}); }, 0);
+    }
+    refreshCloudUI();
+  });
 }
 
 /* ---------- 계산 (PRD 8장) ---------- */
@@ -1007,7 +1074,8 @@ function resizePhoto(file){
 function openSettings(){
   openSheet(`
     <div class="sheet-head"><h2>백업·설정</h2><button class="btn sm" type="button" data-close>닫기</button></div>
-    <p class="note" style="margin:0">입력한 내용은 이 휴대폰 브라우저에 자동 저장돼요. 브라우저 데이터를 지우면 사라지니 가끔 백업해 두세요.</p>
+    <div class="panel"><h3 class="band">클라우드 저장</h3><div id="cloudBody" class="fields" style="padding:14px 16px 16px">${cloudHTML()}</div></div>
+    <p class="note" style="margin:0">입력한 내용은 이 브라우저에도 자동 저장돼요. 브라우저 데이터를 지우면 사라지니 가끔 백업해 두세요.</p>
     <button class="btn primary wide" type="button" id="doExport">백업 내보내기 (JSON 파일)</button>
     <button class="btn wide" type="button" id="doImport">백업 불러오기</button>
     <button class="btn danger wide" type="button" id="doReset">기본값으로 초기화</button>
@@ -1046,6 +1114,17 @@ document.addEventListener('click', async e=>{
     if (!t.dataset.armed){ t.dataset.armed = '1'; t.textContent = '정말 초기화하기'; $('#resetHint').hidden = false; return; }
     state = defaults(); closeSheet(); save(); render(); toast('기본값으로 되돌렸어요'); return;
   }
+  if (t.id === 'cloudSend'){
+    const email = ($('#cloudEmail').value || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ toast('이메일 주소를 확인해 주세요'); $('#cloudEmail').focus(); return; }
+    t.disabled = true; t.textContent = '보내는 중…';
+    const { error } = await sb.auth.signInWithOtp({ email, options:{ emailRedirectTo: location.origin + '/' } });
+    if (error){ t.disabled = false; t.textContent = '로그인 링크 받기'; toast(/rate|limit|seconds/i.test(error.message) ? '잠시 후 다시 시도해 주세요 (메일은 짧은 시간에 여러 번 보낼 수 없어요)' : '링크를 보내지 못했어요. 이메일 주소를 확인해 주세요.', 4000); return; }
+    linkSent = email; refreshCloudUI(); toast('로그인 링크를 보냈어요'); return;
+  }
+  if (t.id === 'cloudPush'){ const ok = await pushNow(); toast(ok ? '클라우드에 저장했어요' : '저장하지 못했어요'); return; }
+  if (t.id === 'cloudPull'){ await pullNow(true); return; }
+  if (t.id === 'cloudOut'){ await sb.auth.signOut(); cloudUser = null; cloudMsg = ''; linkSent = ''; refreshCloudUI(); toast('로그아웃했어요. 이 브라우저의 내용은 그대로 남아요.'); return; }
   if (t.id === 'copyBackup'){
     const ta = $('#backupText');
     try { await navigator.clipboard.writeText(ta.value); toast('복사했어요'); }
@@ -1097,6 +1176,7 @@ new MutationObserver(rerenderCharts).observe(document.documentElement, {attribut
 window.__carDecision = { compute: ()=>compute(state), defaults, reasons };
 
 render();
+initCloud();
 getDownloads();
 rasterizeAll().then(()=>{ if (!$('#sheetRoot').innerHTML) render(); });
 })();
