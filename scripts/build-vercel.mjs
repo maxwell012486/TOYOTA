@@ -23,3 +23,8 @@ if (urlOk && keyOk) {
 mkdirSync('public', { recursive: true });
 writeFileSync('public/index.html', html);
 console.log('public/index.html 생성');
+
+// 부대 차량 구매 도우미(오프라인 단일 HTML)는 그대로 /unit-vehicle-advisor 주소에 둔다
+mkdirSync('public/unit-vehicle-advisor', { recursive: true });
+writeFileSync('public/unit-vehicle-advisor/index.html', readFileSync('unit-vehicle-advisor/부대차량구매도우미.html'));
+console.log('public/unit-vehicle-advisor/index.html 생성');
