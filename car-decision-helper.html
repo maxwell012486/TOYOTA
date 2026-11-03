@@ -60,6 +60,16 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .brand b{font-weight:800;font-size:17px;letter-spacing:-.02em}
 .brand small{color:var(--muted);font-size:12.5px;margin-left:8px}
 .icon-btn{border:0;background:var(--sunk);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:500;color:var(--muted);flex:none}
+.brand-btns{display:flex;gap:6px;flex:none}
+.home-body{padding:16px 18px 18px;display:grid;gap:12px;font-size:14px}
+.home-body p{margin:0}
+.ex{display:flex;gap:8px;align-items:flex-start;background:var(--sunk);border-radius:var(--r-sm);padding:10px 12px;font-size:13px;line-height:1.5}
+.ex-tag{flex:none;font-size:11.5px;font-weight:800;color:var(--accent-ink);background:var(--accent-soft);border-radius:999px;padding:1px 8px;margin-top:1px}
+.home-btns{display:grid;gap:8px}
+.home-btns .btn{padding:12px;font-size:14.5px}
+.report{width:100%;min-height:360px;font-size:13.5px;line-height:1.7;white-space:pre-wrap;background:var(--sunk)}
+.budget-warn{font-size:12px;font-weight:700;color:var(--bad)}
+.budget-ok{font-size:12px;font-weight:700;color:var(--good)}
 .progress{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
 .progress span{display:block;height:100%;background:var(--accent);border-radius:2px;transition:width .25s ease}
 .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;list-style:none;margin:0;padding:0}
@@ -268,7 +278,7 @@ textarea{min-height:84px;resize:vertical}
 
 <header class="top">
   <div class="wrap">
-    <div class="brand"><div><b>내 차 결정 도우미</b><small id="pairName"></small></div><button class="icon-btn" id="openSettings" type="button">백업·설정</button></div>
+    <div class="brand"><div><b>내 차 결정 도우미</b><small id="pairName"></small></div><div class="brand-btns"><button class="icon-btn" id="goHome" type="button">용도 바꾸기</button><button class="icon-btn" id="openSettings" type="button">백업·설정</button></div></div>
     <div class="progress" aria-hidden="true"><span id="progressFill"></span></div>
     <ol class="steps" id="steps"></ol>
   </div>
@@ -288,23 +298,39 @@ textarea{min-height:84px;resize:vertical}
 'use strict';
 
 /* ---------- 기본 데이터 (PRD 7장) ---------- */
-const KEY = 'carDecision.v1';
+const KEY = 'carDecision.v2', KEY_V1 = 'carDecision.v1';
 const STEP_NAMES = ['비교','기준','비용','결론'];
 const DAYS = [['mon','월'],['tue','화'],['wed','수'],['thu','목'],['fri','금'],['sat','토'],['sun','일']];
-const CRIT = [
-  {k:'price', label:'가격', topic:'가격은', auto:true},
-  {k:'fuel', label:'연비', topic:'연비는', auto:true},
-  {k:'design', label:'디자인', topic:'디자인은', desc:'외관·실내가 얼마나 마음에 드는지'},
-  {k:'durability', label:'내구성', topic:'내구성은', desc:'고장 없이 오래 탈 수 있다는 믿음'},
-  {k:'pref', label:'선호도', topic:'선호도는', desc:'승하차·시야, 승차감, 가족 의견을 포함한 체감'}
-];
+/* 용도별 평가 기준. 가격·연비는 계산으로, 나머지는 1~10점 직접 채점 */
+const CRITS = {
+  family: [
+    {k:'price', label:'가격', topic:'가격은', auto:true},
+    {k:'fuel', label:'연비', topic:'연비는', auto:true},
+    {k:'design', label:'디자인', topic:'디자인은', desc:'외관·실내가 얼마나 마음에 드는지'},
+    {k:'durability', label:'내구성', topic:'내구성은', desc:'고장 없이 오래 탈 수 있다는 믿음'},
+    {k:'pref', label:'선호도', topic:'선호도는', desc:'승하차·시야, 승차감, 가족 의견을 포함한 체감'}
+  ],
+  org: [
+    {k:'price', label:'총소유비용', topic:'총소유비용은', auto:true},
+    {k:'fuel', label:'연비', topic:'연비는', auto:true},
+    {k:'perf', label:'성능·적재', topic:'성능·적재는', desc:'출력, 적재공간, 탑승 인원, 험로 주행 등 임무 적합성'},
+    {k:'maint', label:'정비 편의성', topic:'정비 편의성은', desc:'정비망·부품 수급, 보증 기간, 정비 비용'},
+    {k:'safety', label:'안전·내구성', topic:'안전·내구성은', desc:'안전 사양, 충돌 평가, 장기 운용 내구성'}
+  ]
+};
+const MODES = {
+  family: { name:'우리 집 차 고르기', eyebrow:'우리 집 차 결정', verdict:'우리 집 추천', head:'추천', why:'인 이유', memoTitle:'가족 한마디', share:'우리 집 차 결정', file:'내차결정' },
+  org:    { name:'부대·기관 업무차량 선정', eyebrow:'업무차량 선정 검토', verdict:'선정 건의', head:'선정 건의', why:' 선정 사유', memoTitle:'담당자·검토자 의견', share:'업무차량 선정 검토', file:'업무차량선정' }
+};
 const ACQ_RATE = 0.07;          // 취득세 7%
 const TAX_END_2027 = 106;       // 개소세 감면 종료분(만 원): 개소세 70 + 교육세 21 + 부가세 9.1 + 취득세 6.4
 const CAR_HEX = ['#1f63c9','#dd6a10','#1d8657','#7650c4'];
 
-function defaults(){
+/* 예제 1: 우리 집 차 고르기 (직접 작성한 CAMRY vs RAV4 결정) */
+function defaultsFamily(){
   return {
-    v:1, step:1,
+    v:2, mode:'family', step:1, years:5, taxMode:'apply',
+    org:{dept:'', purpose:'', budget:0, years:5},
     cars:[
       {id:'camry', name:'Camry XLE HEV', short:'캠리', year:'2026', color:0, body:'세단',
        price:4843, discount:400, fuel:17.1, power:'224~225마력', drive:'전륜(FWD)',
@@ -322,10 +348,52 @@ function defaults(){
     weights:{price:35, fuel:20, design:15, durability:15, pref:15},
     km:{mon:10, tue:10, wed:10, thu:10, fri:67, sat:10, sun:67},
     gas:1858, region:'경기도 성남시 (분당)', bondRate:12, bondDisc:6, delivery:'2026',
-    memo:{wife:'', kids:''},
+    memo:{wife:'', kids:'', author:'', reviewer:''},
     updatedAt:''
   };
 }
+
+/* 예제 2: 부대·기관 업무차량 선정 (가상 예시 데이터) */
+function defaultsOrg(){
+  const f = defaultsFamily();
+  const [camry, rav4] = f.cars;
+  return {
+    v:2, mode:'org', step:1, years:7, taxMode:'exempt',
+    org:{dept:'OO대대 행정보급실 (예시)', purpose:'보급품 수령·업무 연락·출장', budget:5000, years:7},
+    cars:[
+      {...camry, discount:0,
+       pros:['7년 총소유비용이 RAV4와 비슷한 수준 (차량가가 147만 원 낮음)','장거리 출장 때 승차감과 정숙성이 좋음','의전·업무 연락용으로 쓰기 좋음'],
+       cons:['적재공간이 SUV보다 작아 보급품 운반에 불리','지상고가 낮아 비포장·야지 진입에 한계','연비가 RAV4보다 낮아 주행이 많을수록 연료비 부담'],
+       scores:{perf:6, maint:8, safety:8}},
+      {...rav4, discount:0,
+       pros:['높은 지상고와 넓은 적재공간으로 보급품·장비 운반에 유리','연비가 좋아 연 주행이 많을수록 유리','승하차가 편해 잦은 탑승·하차에 적합'],
+       cons:['차량가가 147만 원 높음','2WD라 험로 주행에는 한계','고속 장거리 정숙성은 세단보다 떨어질 수 있음'],
+       scores:{perf:9, maint:8, safety:8}}
+    ],
+    weights:{price:30, fuel:25, perf:20, maint:15, safety:10},
+    km:{mon:70, tue:70, wed:70, thu:70, fri:70, sat:0, sun:0},
+    gas:1858, region:'', bondRate:12, bondDisc:6, delivery:'2026',
+    memo:{wife:'', kids:'', author:'보급품 운반이 잦아 적재공간과 연비를 중요하게 봤습니다. (예시)', reviewer:'예산 한도 이내이며, 정비는 인근 공식 서비스센터 이용 가능 여부를 확인하기 바람. (예시)'},
+    updatedAt:''
+  };
+}
+
+/* 빈 양식: 후보 2대만 두고 직접 채운다 */
+function blankFor(mode){
+  const base = mode === 'org' ? defaultsOrg() : defaultsFamily();
+  const manual = CRITS[mode].filter(c=>!c.auto).map(c=>c.k);
+  const car = (id, name, short, color, body) => ({id, name, short, year:'2026', color, body, price:0, discount:0, fuel:0, power:'', drive:'', powertrain:'',
+    length:0, width:0, height:0, wheelbase:0, photo:'', pros:[], cons:[], scores:Object.fromEntries(manual.map(k=>[k,5]))});
+  return {...base, step:1,
+    org: mode === 'org' ? {dept:'', purpose:'', budget:0, years:5} : base.org,
+    years: mode === 'org' ? 5 : 5,
+    cars:[car('carA','차량 A','A안',0,'세단'), car('carB','차량 B','B안',1,'SUV')],
+    memo:{wife:'', kids:'', author:'', reviewer:''}, region:'', updatedAt:''};
+}
+const defaultsFor = mode => mode === 'org' ? defaultsOrg() : defaultsFamily();
+const crit = (s=state) => CRITS[s.mode] || CRITS.family;
+const M = () => MODES[state.mode] || MODES.family;
+const holdYears = s => s.mode === 'org' ? clamp(Math.round(num(s.org.years,5)),1,20) : 5;
 
 /* ---------- 유틸 ---------- */
 const $ = (s,r=document)=>r.querySelector(s);
@@ -353,8 +421,24 @@ function rgba(hex,a){
 }
 const carColor = c => cssVar('--c'+c.color) || CAR_HEX[c.color];
 
-/* ---------- 상태 / 저장 ---------- */
-let state = load();
+/* ---------- 상태 / 저장 ----------
+   store = { mode, view:'home'|'flow', family:결정, org:결정 }  ·  state = 지금 보고 있는 용도의 결정 */
+let store = loadStore();
+let state = store[store.mode];
+function normalizeStore(obj){
+  if (obj && (obj.family || obj.org)){
+    const mode = obj.mode === 'org' ? 'org' : 'family';
+    return { mode, view: obj.view === 'home' ? 'home' : 'flow',
+      family: merge(defaultsFamily(), obj.family || {}), org: obj.org ? merge(defaultsOrg(), obj.org) : defaultsOrg(),
+      updatedAt: obj.updatedAt || '' };
+  }
+  if (obj && Array.isArray(obj.cars)){ // 예전(v1) 형식: 우리 집 차 결정 하나만 있던 데이터
+    const family = merge(defaultsFamily(), obj); family.mode = 'family';
+    return { mode:'family', view:'flow', family, org: defaultsOrg(), updatedAt: obj.updatedAt || '' };
+  }
+  return { mode:'family', view:'home', family: defaultsFamily(), org: defaultsOrg(), updatedAt:'' };
+}
+function setMode(mode){ store.mode = mode; state = store[mode]; }
 function merge(base, src){
   if (!src || typeof src !== 'object') return base;
   const out = {...base};
@@ -367,7 +451,7 @@ function merge(base, src){
   }
   if (Array.isArray(src.cars) && src.cars.length >= 2){
     out.cars = src.cars.slice(0,4).map((c,i)=>{
-      const tmpl = defaults().cars[i] || defaults().cars[0];
+      const tmpl = base.cars[i] || base.cars[0];
       const car = {...tmpl, ...c, scores:{...tmpl.scores, ...(c.scores||{})}};
       car.pros = Array.isArray(c.pros) ? c.pros.map(String) : [];
       car.cons = Array.isArray(c.cons) ? c.cons.map(String) : [];
@@ -378,20 +462,23 @@ function merge(base, src){
   }
   return out;
 }
-function load(){
-  try { const raw = localStorage.getItem(KEY); if (raw) return merge(defaults(), JSON.parse(raw)); } catch(e){}
-  return defaults();
+function loadStore(){
+  try {
+    const raw = localStorage.getItem(KEY) || localStorage.getItem(KEY_V1);
+    if (raw) return normalizeStore(JSON.parse(raw));
+  } catch(e){}
+  return normalizeStore(null);
 }
 let saveTimer = 0, cardDirty = true;
 function save(){
   cardDirty = true;
-  state.updatedAt = new Date().toISOString();
+  state.updatedAt = store.updatedAt = new Date().toISOString();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveLocal, 250);
   schedulePush();
 }
 function saveLocal(){
-  try { localStorage.setItem(KEY, JSON.stringify(state)); }
+  try { localStorage.setItem(KEY, JSON.stringify(store)); }
   catch(e){ toast('휴대폰 저장 공간이 부족해 자동 저장하지 못했어요. 백업을 내보내 두세요.'); }
 }
 
@@ -407,7 +494,7 @@ function schedulePush(){
 }
 async function pushNow(){
   if (!sb || !cloudUser) return false;
-  const { error } = await sb.from('car_decisions').upsert({ user_id: cloudUser.id, state, updated_at: state.updatedAt || new Date().toISOString() });
+  const { error } = await sb.from('car_decisions').upsert({ user_id: cloudUser.id, state: store, updated_at: store.updatedAt || new Date().toISOString() });
   const t = new Date();
   cloudMsg = error ? '클라우드 저장에 실패했어요. 인터넷 연결을 확인해 주세요.' : `클라우드에 저장됨 · ${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
   refreshCloudUI();
@@ -417,9 +504,9 @@ async function pullNow(force){
   if (!sb || !cloudUser) return;
   const { data, error } = await sb.from('car_decisions').select('state, updated_at').eq('user_id', cloudUser.id).maybeSingle();
   if (error){ cloudMsg = '클라우드에서 불러오지 못했어요.'; refreshCloudUI(); return; }
-  const remoteNewer = data && data.state && (force || !state.updatedAt || new Date(data.updated_at) > new Date(state.updatedAt));
+  const remoteNewer = data && data.state && (force || !store.updatedAt || new Date(data.updated_at) > new Date(store.updatedAt));
   if (remoteNewer){
-    state = merge(defaults(), data.state); state.updatedAt = data.updated_at;
+    store = normalizeStore(data.state); store.updatedAt = data.updated_at; setMode(store.mode);
     saveLocal(); cardDirty = true; render();
     cloudMsg = '클라우드에 저장된 내용을 불러왔어요.'; toast(cloudMsg);
     refreshCloudUI();
@@ -463,46 +550,46 @@ function compute(s){
   const annualKm = weekKm * 52;
   const gas = Math.max(0, num(s.gas));
   const extra = s.delivery === '2027' ? TAX_END_2027 : 0;
+  const exempt = s.taxMode === 'exempt';   // 국가·지자체 취득은 취득세 비과세, 공채 매입 없음
+  const Y = holdYears(s);
+  const years = [...new Set([1,5,10,20,Y])].sort((a,b)=>a-b);
+  const cs = crit(s);
   const cars = s.cars.map(c=>{
     const net = num(c.price) - num(c.discount);
     const base = net / 1.1;
-    const acq = base * ACQ_RATE;
-    const bond = base * num(s.bondRate)/100;
+    const acq = exempt ? 0 : base * ACQ_RATE;
+    const bond = exempt ? 0 : base * num(s.bondRate)/100;
     const bondLoss = bond * num(s.bondDisc)/100;
     const total = net + acq + bondLoss + extra;
     const fuel = num(c.fuel);
     const fuelCost = fuel > 0 ? annualKm / fuel * gas / 10000 : 0;
-    const cum = {1: total + fuelCost, 5: total + fuelCost*5, 10: total + fuelCost*10, 20: total + fuelCost*20};
+    const cum = Object.fromEntries(years.map(y=>[y, total + fuelCost*y]));
     return {car:c, net, base, acq, bond, bondLoss, extra, total, fuel, fuelCost, cum};
   });
-  const min5 = Math.min(...cars.map(x=>x.cum[5]));
+  const minY = Math.min(...cars.map(x=>x.cum[Y]));
   const maxFuel = Math.max(...cars.map(x=>x.fuel), 0.0001);
-  const w = s.weights; const wsum = CRIT.reduce((a,c)=>a + Math.max(0,num(w[c.k])),0);
+  const w = s.weights; const wsum = cs.reduce((a,c)=>a + Math.max(0,num(w[c.k])),0);
   cars.forEach(x=>{
-    const pct = min5 > 0 ? (x.cum[5]-min5)/min5*100 : 0;
-    x.pct5 = pct;
-    x.s = {
-      price: Math.max(1, 10 - 0.5*pct),
-      fuel: 10 * x.fuel / maxFuel,
-      design: clamp(num(x.car.scores.design,5),1,10),
-      durability: clamp(num(x.car.scores.durability,5),1,10),
-      pref: clamp(num(x.car.scores.pref,5),1,10)
-    };
-    x.score = wsum > 0 ? CRIT.reduce((a,c)=>a + x.s[c.k]*Math.max(0,num(w[c.k])),0) / wsum * 10 : 0;
+    const pct = minY > 0 ? (x.cum[Y]-minY)/minY*100 : 0;
+    x.pctY = pct;
+    x.s = { price: Math.max(1, 10 - 0.5*pct), fuel: 10 * x.fuel / maxFuel };
+    cs.filter(c=>!c.auto).forEach(c=>{ x.s[c.k] = clamp(num((x.car.scores||{})[c.k],5),1,10); });
+    x.score = wsum > 0 ? cs.reduce((a,c)=>a + x.s[c.k]*Math.max(0,num(w[c.k])),0) / wsum * 10 : 0;
   });
   const ranked = [...cars].sort((a,b)=>b.score - a.score);
-  return {cars, ranked, weekKm, annualKm, gas, wsum, extra};
+  return {cars, ranked, weekKm, annualKm, gas, wsum, extra, exempt, Y, years};
 }
 
 function reasons(rec, rival, R){
-  const w = state.weights;
-  const contrib = CRIT.map(c=>({c, d: Math.max(0,num(w[c.k]))/(R.wsum||1) * (rec.s[c.k]-rival.s[c.k])}));
+  const w = state.weights, Y = R.Y;
+  const taxNote = R.exempt ? '취득세 면제 기준' : '취득세·공채 포함';
+  const contrib = crit().map(c=>({c, d: Math.max(0,num(w[c.k]))/(R.wsum||1) * (rec.s[c.k]-rival.s[c.k])}));
   const fav = contrib.filter(x=>x.d > 1e-4).sort((a,b)=>b.d-a.d);
   const unf = contrib.filter(x=>x.d < -1e-4).sort((a,b)=>a.d-b.d);
   const rn = rival.car.short || rival.car.name;
   const lines = fav.slice(0,3).map(({c})=>{
     let t;
-    if (c.k==='price') t = `5년 총비용이 ${fm(rival.cum[5]-rec.cum[5])}만 원 적게 듭니다 (취득세·공채 포함).`;
+    if (c.k==='price') t = `${Y}년 총비용이 ${fm(rival.cum[Y]-rec.cum[Y])}만 원 적게 듭니다 (${taxNote}).`;
     else if (c.k==='fuel') t = `연비가 ${f1(rec.fuel-rival.fuel)}km/L 좋아 1년 연료비가 ${f1(rival.fuelCost-rec.fuelCost)}만 원 줄어듭니다.`;
     else if (c.k==='pref') t = `직접 타본 느낌(승하차·시야·승차감)에서 더 높은 점수를 받았습니다 (${fm(rec.s.pref)}점 대 ${fm(rival.s.pref)}점).`;
     else t = `${c.label} 점수에서 ${fm(rec.s[c.k])}점 대 ${fm(rival.s[c.k])}점으로 앞섭니다.`;
@@ -511,7 +598,7 @@ function reasons(rec, rival, R){
   for (const {c} of unf){
     if (lines.length >= 3) break;
     let t;
-    if (c.k==='price') t = `반대로 가격은 ${iga(rn)} 낫습니다. 5년 총비용이 ${fm(rec.cum[5]-rival.cum[5])}만 원 적어요.`;
+    if (c.k==='price') t = `반대로 ${c.topic} ${iga(rn)} 낫습니다. ${Y}년 총비용이 ${fm(rec.cum[Y]-rival.cum[Y])}만 원 적어요.`;
     else if (c.k==='fuel') t = `반대로 연비는 ${iga(rn)} 낫습니다. 1년 연료비가 ${f1(rec.fuelCost-rival.fuelCost)}만 원 적어요.`;
     else t = `반대로 ${c.topic} ${iga(rn)} 낫습니다 (${fm(rival.s[c.k])}점 대 ${fm(rec.s[c.k])}점).`;
     lines.push({tag:c.label, text:t, trade:true});
@@ -539,7 +626,9 @@ function catchUps(R){
     if (save <= 0.05) return `${eunneun(xn)} ${bn}보다 사는 값도 ${fm(gap)}만 원 비싸고 연료비도 적지 않아, 시간이 지나도 차이가 줄지 않습니다.`;
     const yrs = gap / save;
     let t = `${iga(xn)} 연비로 가격 차이(${fm(gap)}만 원)를 따라잡는 데 <b>약 ${f0(yrs)}년</b>이 걸립니다. 연비 이득은 연 ${f1(save)}만 원입니다.`;
-    if (yrs > 20) t += ' 20년을 타도 따라잡지 못하니, 결론을 바꾸는 변수는 디자인과 선호도 점수입니다.';
+    const manual = crit().filter(c=>!c.auto).map(c=>c.label).join('·');
+    if (yrs > 20) t += ` 20년을 타도 따라잡지 못하니, 결론을 바꾸는 변수는 ${manual} 점수입니다.`;
+    else if (state.mode === 'org' && yrs > R.Y) t += ` 보유 기간(${R.Y}년) 안에는 따라잡지 못합니다.`;
     return t;
   });
 }
@@ -624,28 +713,67 @@ function chartBase(){
 }
 
 function renderSteps(){
+  const home = store.view === 'home';
+  $('.progress').hidden = home; $('#steps').hidden = home; $('.nav').hidden = home;
+  $('#goHome').hidden = home;
+  if (home){ $('#pairName').textContent = '무엇을 결정할까요?'; return; }
   $('#steps').innerHTML = STEP_NAMES.map((n,i)=>{
     const s = i+1;
     return `<li><button type="button" data-go="${s}" class="${s < state.step ? 'done':''}" ${s===state.step?'aria-current="step"':''}><span class="n">${s}</span>${n}</button></li>`;
   }).join('');
   $('#progressFill').style.width = (state.step/4*100) + '%';
-  $('#pairName').textContent = state.cars.map(c=>c.short||c.name).join(' vs ');
+  $('#pairName').textContent = (state.mode === 'org' ? '업무차량 · ' : '') + state.cars.map(c=>c.short||c.name).join(' vs ');
   const prev = $('#prev'), next = $('#next');
   prev.disabled = state.step === 1;
   next.textContent = state.step === 4 ? '처음부터 다시' : (state.step === 3 ? '결론 보기' : '다음');
 }
 
 function go(step){
+  store.view = 'flow';
   state.step = clamp(step,1,4); save();
   render();
   window.scrollTo({top:0});
+}
+function goHome(){ store.view = 'home'; saveLocal(); render(); window.scrollTo({top:0}); }
+function openMode(mode, how){
+  if (how === 'example') store[mode] = defaultsFor(mode);
+  if (how === 'blank') store[mode] = blankFor(mode);
+  setMode(mode); go(1);
+}
+
+/* ---------- ⓪ 처음 화면: 용도 고르기 ---------- */
+let armed = '';   // 두 번 눌러 확인하는 버튼
+function homeView(){
+  const used = m => !!store[m].updatedAt;
+  const card = (m, cls, desc, ex) => `
+    <article class="panel ${cls}">
+      <h3 class="band">${MODES[m].name}</h3>
+      <div class="home-body">
+        <p>${desc}</p>
+        <div class="ex"><span class="ex-tag">${m === 'org' ? '예시' : '예제'}</span><span>${ex}</span></div>
+        <div class="home-btns">
+          <button class="btn primary" type="button" data-open="${m}" data-how="open">${used(m) ? '이어서 하기' : '예제로 시작'}</button>
+          ${used(m) ? `<button class="btn" type="button" data-open="${m}" data-how="example">${armed === m+'example' ? '한 번 더 누르면 예제로 바뀌어요' : '예제로 되돌리기'}</button>` : ''}
+          <button class="btn soft" type="button" data-open="${m}" data-how="blank">${armed === m+'blank' ? '한 번 더 누르면 비워져요' : '빈 양식으로 새로'}</button>
+        </div>
+      </div>
+    </article>`;
+  return `
+  <section class="cover"><h1 class="h">무엇을 결정할까요?</h1>
+  <p class="lede">용도를 고르면 같은 4단계(비교 → 기준 → 비용 → 결론)로 정리해 드려요.</p></section>
+  ${card('family', '', '가족이 함께 탈 차를 가격·연비·디자인·내구성·선호도로 비교해요. 결론 카드를 가족 단톡방에 바로 공유할 수 있어요.',
+    '<b>CAMRY vs RAV4</b> · 실제로 작성한 우리 집 결정 (분당지점 견적, 연 9,568km)')}
+  ${card('org', 'peach', '관용차·업무용 차량 후보를 총소유비용·연비·성능·적재·정비 편의성·안전성으로 비교해요. 결재에 붙일 <b>구매 검토 보고 문안</b>과 첨부 이미지를 만들어 줘요.',
+    '<b>OO대대 행정보급실 업무차량 교체</b> · CAMRY vs RAV4, 7년 보유, 취득세 면제 (가상 데이터)')}
+  <p class="note" style="text-align:center">예시는 가상 데이터예요. 실제 군 업무자료·개인정보·비밀정보는 입력하지 마세요.</p>`;
 }
 
 function render(){
   killCharts();
   renderSteps();
   const v = $('#view');
-  if (state.step === 1) v.innerHTML = step1();
+  if (store.view === 'home'){ v.innerHTML = homeView(); return; }
+  if (state.step === 1) { v.innerHTML = step1(); refresh1(); }
   if (state.step === 2) { v.innerHTML = step2(); refresh2(); }
   if (state.step === 3) { v.innerHTML = step3(); refresh3(); }
   if (state.step === 4) { v.innerHTML = step4(); drawRadar(); scheduleCapture(); }
@@ -660,9 +788,21 @@ function step1(){
   const netWin = netVals.filter(v=>v===minNet).length===1 ? netVals.indexOf(minNet) : -1;
   const row = (label, fn, win=-1, txt=false) => `<tr><th scope="row">${label}</th>${cs.map((c,i)=>`<td class="cc${c.color} ${i===win?'win':''} ${txt?'txt':''}">${fn(c,i)}</td>`).join('')}</tr>`;
   const mm = v => num(v) ? f0(num(v)) : '—';
+  const org = state.mode === 'org';
+  const discLabel = org ? '할인' : '분당 할인';
   return `
   <section class="cover"><h1 class="h">1. ${esc(cs.map(bigName).join(' vs '))}, 나란히 보기</h1>
-  <p class="lede">분당지점 견적 기준이에요. 카드의 ‘수정’에서 값과 사진을 바꿀 수 있어요.</p></section>
+  <p class="lede">${org ? '업체 견적(또는 조달 단가) 기준이에요.' : '분당지점 견적 기준이에요.'} 카드의 ‘수정’에서 값과 사진을 바꿀 수 있어요.</p></section>
+  ${org ? `<section class="card fields peach">
+    <h2>구매 개요 <span class="sub">검토 보고 문안의 목적·대상에 들어가요</span></h2>
+    <label class="field"><span>사용 부서</span><input type="text" id="o_dept" data-org="dept" value="${esc(state.org.dept)}" placeholder="예: OO대대 행정보급실"></label>
+    <label class="field"><span>용도</span><input type="text" id="o_purpose" data-org="purpose" value="${esc(state.org.purpose)}" placeholder="예: 보급품 수령·업무 연락·출장"></label>
+    <div class="two">
+      <label class="field"><span>예산 한도 (만 원)</span><input type="number" inputmode="numeric" id="o_budget" data-org="budget" value="${num(state.org.budget) || ''}" placeholder="예: 5000"></label>
+      <label class="field"><span>보유 기간 (년)</span><input type="number" inputmode="numeric" min="1" max="20" id="o_years" data-org="years" value="${holdYears(state)}"><small>총소유비용 점수의 기준</small></label>
+    </div>
+    <div id="budgetOut"></div>
+  </section>` : ''}
   <section>
     <div class="cars">${cs.map((c,i)=>`
       <article class="car cc${c.color}">
@@ -671,7 +811,7 @@ function step1(){
           <div><span class="tag-car">${esc(bigName(c))}</span><div class="nm">${esc(c.name)}</div><div class="meta">${esc(c.year)}년형 · ${esc(c.body)}</div>${isOfficial(c) ? '<div class="credit">사진: 한국토요타</div>' : ''}</div>
           <div class="quote">
             <div><span>출고가</span><span class="num">${fm(num(c.price))}만</span></div>
-            <div class="disc"><span>분당 할인</span><span class="num">−${fm(num(c.discount))}만</span></div>
+            <div class="disc"><span>${discLabel}</span><span class="num">−${fm(num(c.discount))}만</span></div>
             <div class="final"><span>할인 후</span><b>${fm(R.cars[i].net)}만</b></div>
           </div>
           <button class="btn sm soft" type="button" data-edit="${i}">수정</button>
@@ -708,15 +848,27 @@ function step1(){
   </section>`; }).join('')}`;
 }
 
+/* 예산 한도 대비 실구매 총액 */
+function budgetLine(x){
+  const b = num(state.org.budget);
+  if (state.mode !== 'org' || !b) return '';
+  return x.total <= b ? `<span class="budget-ok">예산 이내 (여유 ${fm(b - x.total)}만 원)</span>` : `<span class="budget-warn">예산 ${fm(x.total - b)}만 원 초과</span>`;
+}
+function refresh1(){
+  const box = $('#budgetOut'); if (!box) return;
+  const R = compute(state), b = num(state.org.budget);
+  box.innerHTML = b ? `<div class="kmline" style="flex-direction:column;gap:4px">${R.cars.map(x=>`<span><b>${esc(bigName(x.car))}</b> 실구매 총액 ${fm(x.total)}만 원 · ${budgetLine(x)}</span>`).join('')}</div>` : '';
+}
+
 /* ---------- ② 내 기준·점수 ---------- */
 function step2(){
   const cs = state.cars;
   return `
-  <section class="cover"><h1 class="h">2. 내 기준으로 점수 매기기</h1>
-  <p class="lede">가격과 연비는 계산으로 자동 채점되고, 나머지 셋은 직접 매겨요.</p></section>
+  <section class="cover"><h1 class="h">2. ${state.mode === 'org' ? '선정 기준으로 점수 매기기' : '내 기준으로 점수 매기기'}</h1>
+  <p class="lede">${crit()[0].label}${batchim(crit()[0].label) ? '과' : '와'} 연비는 계산으로 자동 채점되고, 나머지 셋은 직접 매겨요.</p></section>
   <section class="card">
     <h2>가중치 <span class="sub">무엇을 얼마나 중요하게 볼까</span></h2>
-    ${CRIT.map((c,i)=>`<div class="slider-row" style="--cc:${['var(--accent)','var(--accent)','var(--muted)','var(--muted)','var(--muted)'][i]}">
+    ${crit().map((c,i)=>`<div class="slider-row" style="--cc:${['var(--accent)','var(--accent)','var(--muted)','var(--muted)','var(--muted)'][i]}">
       <label for="w_${c.k}">${c.label}</label>
       <input type="range" id="w_${c.k}" min="0" max="60" step="5" value="${num(state.weights[c.k])}" data-w="${c.k}">
       <output id="wo_${c.k}">${num(state.weights[c.k])}%</output></div>`).join('')}
@@ -728,7 +880,7 @@ function step2(){
   </section>
   <section class="card">
     <h2>직접 매기는 점수 <span class="sub">1~10점</span></h2>
-    ${CRIT.filter(c=>!c.auto).map(c=>`<div class="crit"><h3>${c.label}<span class="req">*</span></h3><p>${c.desc}</p>
+    ${crit().filter(c=>!c.auto).map(c=>`<div class="crit"><h3>${c.label}<span class="req">*</span></h3><p>${c.desc}</p>
       ${cs.map((car,i)=>{ const v = clamp(Math.round(num(car.scores[c.k],5)),1,10); return `<div class="scale-row cc${car.color}">
         <div class="who"><span><span class="dot"></span>${esc(car.short||car.name)}</span><output id="so_${c.k}_${i}">${v}점</output></div>
         <div class="scale" role="radiogroup" aria-label="${esc(car.short||car.name)} ${c.label} 점수">${Array.from({length:10},(_,j)=>j+1).map(n=>`<input type="radio" id="s_${c.k}_${i}_${n}" name="s_${c.k}_${i}" value="${n}" data-score="${c.k}" data-car="${i}" ${n===v?'checked':''}><label for="s_${c.k}_${i}_${n}">${n}</label>`).join('')}</div>
@@ -740,30 +892,35 @@ function step2(){
     <h2>지금 점수 <span class="sub">100점 만점</span></h2>
     <div id="liveOut"></div>
   </section>
-  <section class="card fields peach">
+  ${state.mode === 'org' ? `<section class="card fields peach">
+    <h2>담당자·검토자 의견 <span class="sub">점수엔 반영 안 하고 결론 카드와 검토 보고에 표시</span></h2>
+    <label class="field"><span>담당자 의견</span><textarea id="memoAuthor" data-memo="author" placeholder="예: 보급품 운반이 잦아 적재공간을 중요하게 봤습니다.">${esc(state.memo.author)}</textarea></label>
+    <label class="field"><span>검토자 의견</span><textarea id="memoReviewer" data-memo="reviewer" placeholder="예: 예산 한도 이내이며, 정비망 확인 후 진행 바람.">${esc(state.memo.reviewer)}</textarea></label>
+  </section>` : `<section class="card fields peach">
     <h2>가족 한마디 <span class="sub">점수엔 반영 안 하고 결론 카드에 표시</span></h2>
     <label class="field"><span>아내 한마디</span><textarea id="memoWife" data-memo="wife" placeholder="예: 캠리는 어때? 타고 내리기만 괜찮으면">${esc(state.memo.wife)}</textarea></label>
     <label class="field"><span>자녀 한마디</span><textarea id="memoKids" data-memo="kids" placeholder="예: 아빠 차는 세단이 멋있어">${esc(state.memo.kids)}</textarea></label>
-  </section>`;
+  </section>`}`;
 }
 function refresh2(){
   const R = compute(state);
-  const sum = CRIT.reduce((a,c)=>a + num(state.weights[c.k]),0);
+  const CR = crit();
+  const sum = CR.reduce((a,c)=>a + num(state.weights[c.k]),0);
   const shades = [1,.75,.5,.35,.22];
   const acc = cssVar('--ink');
   $('#sumOut').innerHTML = `
-    <div class="sumbar" aria-hidden="true">${CRIT.map((c,i)=>`<span style="width:${sum? num(state.weights[c.k])/Math.max(sum,100)*100 : 0}%;background:${acc};opacity:${shades[i]}"></span>`).join('')}</div>
-    <div class="sumtxt"><span>${CRIT.map(c=>`${c.label} ${num(state.weights[c.k])}`).join(' · ')}</span><b class="num" style="color:${sum===100?'var(--good)':'var(--warn)'}">합계 ${sum}%</b></div>
+    <div class="sumbar" aria-hidden="true">${CR.map((c,i)=>`<span style="width:${sum? num(state.weights[c.k])/Math.max(sum,100)*100 : 0}%;background:${acc};opacity:${shades[i]}"></span>`).join('')}</div>
+    <div class="sumtxt"><span>${CR.map(c=>`${c.label} ${num(state.weights[c.k])}`).join(' · ')}</span><b class="num" style="color:${sum===100?'var(--good)':'var(--warn)'}">합계 ${sum}%</b></div>
     ${sum!==100 ? `<div class="warnbox">합계가 ${sum}%예요. 100%로 맞춰 주세요. 그 전까지는 비율로 환산해서 계산합니다.</div>` : ''}`;
   $('#autoOut').innerHTML = `<div class="tbl-wrap" style="border:0"><table>
     <thead><tr><th scope="col"></th>${R.cars.map(x=>`<th scope="col"><span class="dot cc${x.car.color}"></span>${esc(x.car.short||x.car.name)}</th>`).join('')}</tr></thead>
     <tbody>
-      <tr><th scope="row">가격 점수</th>${R.cars.map(x=>`<td class="num cc${x.car.color}" style="font-weight:700;color:var(--cc)">${f1(x.s.price)}</td>`).join('')}</tr>
-      <tr><th scope="row">근거: 5년 총비용</th>${R.cars.map(x=>`<td class="num">${fm(x.cum[5])}만<br><small style="color:var(--muted)">${x.pct5<0.05?'최저':'+'+f1(x.pct5)+'%'}</small></td>`).join('')}</tr>
+      <tr><th scope="row">${CR[0].label} 점수</th>${R.cars.map(x=>`<td class="num cc${x.car.color}" style="font-weight:700;color:var(--cc)">${f1(x.s.price)}</td>`).join('')}</tr>
+      <tr><th scope="row">근거: ${R.Y}년 총비용</th>${R.cars.map(x=>`<td class="num">${fm(x.cum[R.Y])}만<br><small style="color:var(--muted)">${x.pctY<0.05?'최저':'+'+f1(x.pctY)+'%'}</small></td>`).join('')}</tr>
       <tr><th scope="row">연비 점수</th>${R.cars.map(x=>`<td class="num cc${x.car.color}" style="font-weight:700;color:var(--cc)">${f1(x.s.fuel)}</td>`).join('')}</tr>
       <tr><th scope="row">근거: 복합연비</th>${R.cars.map(x=>`<td class="num">${f1(x.fuel)} km/L</td>`).join('')}</tr>
     </tbody></table></div>
-    <p class="note">가격: 5년 총비용이 가장 낮은 차가 10점, 1% 비쌀 때마다 −0.5점(최저 1점). 연비: 10 × (내 연비 ÷ 최고 연비).</p>`;
+    <p class="note">${CR[0].label}: ${R.Y}년 총비용(실구매 총액 + 연료비)이 가장 낮은 차가 10점, 1% 비쌀 때마다 −0.5점(최저 1점). 연비: 10 × (내 연비 ÷ 최고 연비).</p>`;
   $('#liveOut').innerHTML = `<div class="live">${R.ranked.map((x,i)=>`<span class="cc${x.car.color}">${i+1}위 · ${esc(x.car.short||x.car.name)}<b>${f1(x.score)}점</b></span>`).join('')}</div>`;
 }
 
@@ -783,12 +940,19 @@ function step3(){
   </section>
   <section class="card fields peach">
     <h2>세금 설정 <span class="sub">견적서 숫자로 맞춰 주세요</span></h2>
+    ${state.mode === 'org' ? `<div class="field"><span>취득세·공채</span>
+      <div class="seg" role="radiogroup">
+        <input type="radio" name="taxMode" id="tx_exempt" value="exempt" ${state.taxMode==='exempt'?'checked':''}><label for="tx_exempt">면제 (국가·지자체)</label>
+        <input type="radio" name="taxMode" id="tx_apply" value="apply" ${state.taxMode!=='exempt'?'checked':''}><label for="tx_apply">일반 과세</label>
+      </div>
+      <small>국가·지자체가 취득하는 차량은 취득세가 비과세예요. 기관 유형에 따라 다르니 계약 부서에 확인해 주세요.</small>
+    </div>` : ''}
     <label class="field"><span>등록 지역</span><input type="text" id="region" data-set="region" value="${esc(state.region)}"></label>
     <div class="two">
       <label class="field"><span>공채 매입률 (%)</span><input type="number" inputmode="decimal" step="0.1" id="bondRate" data-set="bondRate" value="${num(state.bondRate)}"></label>
       <label class="field"><span>즉시매도 할인율 (%)</span><input type="number" inputmode="decimal" step="0.1" id="bondDisc" data-set="bondDisc" value="${num(state.bondDisc)}"></label>
     </div>
-    <p class="note" style="margin:-4px 0 0">공채 값은 임시값이에요. 분당지점 견적서의 공채 금액으로 맞춰 주세요.</p>
+    <p class="note" style="margin:-4px 0 0">공채 값은 임시값이에요. ${state.mode === 'org' ? '견적서' : '분당지점 견적서'}의 공채 금액으로 맞춰 주세요.</p>
     <div class="field"><span>출고 시기</span>
       <div class="seg" role="radiogroup">
         <input type="radio" name="delivery" id="dl2026" value="2026" ${state.delivery==='2026'?'checked':''}><label for="dl2026">2026년 내</label>
@@ -808,10 +972,10 @@ function refresh3(){
   const cs = R.cars;
   const rows = [
     ['출고가', x=>fm(num(x.car.price))],
-    ['분당 할인', x=>'−'+fm(num(x.car.discount))],
+    [state.mode === 'org' ? '할인' : '분당 할인', x=>'−'+fm(num(x.car.discount))],
     ['할인 후 가격', x=>fm(x.net)],
-    ['취득세 7%', x=>'+'+f1(x.acq)],
-    ['공채 할인 손실', x=>'+'+f1(x.bondLoss)],
+    [R.exempt ? '취득세 (면제)' : '취득세 7%', x=>'+'+f1(x.acq)],
+    [R.exempt ? '공채 (해당 없음)' : '공채 할인 손실', x=>'+'+f1(x.bondLoss)],
   ];
   if (R.extra) rows.push(['개소세 감면 종료분', x=>'+'+f1(x.extra)]);
   const minT = Math.min(...cs.map(x=>x.total));
@@ -820,14 +984,15 @@ function refresh3(){
     <tbody>${rows.map(([l,fn])=>`<tr><th scope="row">${l}</th>${cs.map(x=>`<td class="num">${fn(x)}</td>`).join('')}</tr>`).join('')}
       <tr class="total"><th scope="row">실구매 총액</th>${cs.map(x=>`<td class="num cc${x.car.color} ${x.total===minT && cs.filter(y=>y.total===minT).length===1?'win':''}">${f1(x.total)}</td>`).join('')}</tr>
       <tr><th scope="row">연간 연료비</th>${cs.map(x=>`<td class="num">${f1(x.fuelCost)}</td>`).join('')}</tr>
+      ${state.mode === 'org' && num(state.org.budget) ? `<tr><th scope="row">예산 ${fm(num(state.org.budget))}만 원 대비</th>${cs.map(x=>`<td class="txt" style="text-align:right">${budgetLine(x)}</td>`).join('')}</tr>` : ''}
     </tbody></table></div></div>
     <p class="note">과세표준 = 할인 후 가격 ÷ 1.1. 공채 손실 = 과세표준 × 매입률 ${num(state.bondRate)}% × 할인율 ${num(state.bondDisc)}%. 하이브리드 취득세 감면은 2024년 말에 끝났어요.</p>`;
   $('#kmOut').innerHTML = `<span>주 <b class="num">${f0(R.weekKm)}</b> km</span><span>연 <b class="num">${f0(R.annualKm)}</b> km (×52주)</span>`;
 
-  const years = [1,5,10,20];
+  const years = R.years;
   $('#cumOut').innerHTML = `<div class="tbl-wrap" style="margin:14px -18px 0"><table>
     <thead><tr><th scope="col"></th>${cs.map(x=>`<th scope="col"><span class="dot cc${x.car.color}"></span>${esc(x.car.short||x.car.name)}</th>`).join('')}</tr></thead>
-    <tbody>${years.map(y=>{ const m = Math.min(...cs.map(x=>x.cum[y])); return `<tr><th scope="row">${y}년</th>${cs.map(x=>`<td class="num cc${x.car.color} ${x.cum[y]===m?'win':''}">${f1(x.cum[y])}</td>`).join('')}</tr>`; }).join('')}</tbody>
+    <tbody>${years.map(y=>{ const m = Math.min(...cs.map(x=>x.cum[y])); return `<tr><th scope="row">${y}년${state.mode === 'org' && y === R.Y ? ' (보유)' : ''}</th>${cs.map(x=>`<td class="num cc${x.car.color} ${x.cum[y]===m?'win':''}">${f1(x.cum[y])}</td>`).join('')}</tr>`; }).join('')}</tbody>
     </table></div>
     <div class="insight">${catchUps(R).map(t=>`<p>${t}</p>`).join('')}</div>`;
 
@@ -854,16 +1019,17 @@ function step4(){
   const d = new Date();
   const ds = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
   const sign = (v, more, less) => v > 0.05 ? more : (v < -0.05 ? less : '같음');
-  const dTotal = rival.total - rec.total, d5 = rival.cum[5] - rec.cum[5], dFuel = rec.fuel - rival.fuel;
+  const Y = R.Y, org = state.mode === 'org', m = M();
+  const dTotal = rival.total - rec.total, d5 = rival.cum[Y] - rec.cum[Y], dFuel = rec.fuel - rival.fuel;
   const maxScore = 100;
   const w = state.weights;
   return `
   <div id="shareCard" class="share">
     <div class="sc-top">
-      <div class="eyebrow">우리 집 차 결정 · ${ds}</div>
+      <div class="eyebrow">${m.eyebrow}${org && state.org.dept ? ' · ' + esc(state.org.dept) : ''} · ${ds}</div>
       ${close
-        ? `<h1 class="sc-head">박빙이에요.<br>시승을 한 번 더 해 보세요</h1>`
-        : `<span class="verdict cc${rec.car.color}">우리 집 추천</span><h1 class="sc-head cc${rec.car.color}">추천: <em>${esc(bigName(rec.car))}</em></h1>`}
+        ? `<h1 class="sc-head">박빙이에요.<br>${org ? '추가 시승·견적 비교가 필요해요' : '시승을 한 번 더 해 보세요'}</h1>`
+        : `<span class="verdict cc${rec.car.color}">${m.verdict}</span><h1 class="sc-head cc${rec.car.color}">${m.head}: <em>${esc(bigName(rec.car))}</em></h1>`}
       <div class="sc-vs"><span class="cc${rec.car.color}">${esc(bigName(rec.car))}<b>${f1(rec.score)}<small>점</small></b></span><span class="cc${rival.car.color}">${esc(bigName(rival.car))}<b>${f1(rival.score)}<small>점</small></b></span></div>
     </div>
     <div class="sc-photo">${photoImg(rec.car, 'photo')}</div>
@@ -871,27 +1037,80 @@ function step4(){
     <div class="panel neutral"><h3 class="band">5가지 기준 점수</h3><div class="radar-panel"><div class="radar"><canvas id="radarChart" role="img" aria-label="5개 기준 점수 레이더 차트"></canvas></div></div></div>
     <div class="kpis">
       <div class="kpi"><span class="k">실구매 총액 차이</span><span class="v">${fm(Math.abs(dTotal))}<small>만 원</small></span><span class="s cc${rec.car.color}" style="color:var(--cc)">${sign(dTotal, esc(iga(rn))+' 저렴', esc(iga(rn))+' 비쌈')}</span></div>
-      <div class="kpi"><span class="k">5년 총비용 차이</span><span class="v">${fm(Math.abs(d5))}<small>만 원</small></span><span class="s cc${rec.car.color}" style="color:var(--cc)">${sign(d5, esc(iga(rn))+' 저렴', esc(iga(rn))+' 비쌈')}</span></div>
+      <div class="kpi"><span class="k">${Y}년 총비용 차이</span><span class="v">${fm(Math.abs(d5))}<small>만 원</small></span><span class="s cc${rec.car.color}" style="color:var(--cc)">${sign(d5, esc(iga(rn))+' 저렴', esc(iga(rn))+' 비쌈')}</span></div>
       <div class="kpi"><span class="k">연비 차이</span><span class="v">${f1(Math.abs(dFuel))}<small>km/L</small></span><span class="s cc${(dFuel>=0?rec:rival).car.color}" style="color:var(--cc)">${Math.abs(dFuel)<0.05?'같음':esc(iga(dFuel>0?rn:vn))+' 좋음'}</span></div>
     </div>
     ${(()=>{ const good = lines.filter(l=>!l.trade), trade = lines.filter(l=>l.trade);
       const li = (l, ico) => `<li><span class="ico ${ico}"></span><span><b>${esc(l.tag)}</b>${esc(l.text)}</span></li>`;
       return `<div class="pc-pair">
-        <article class="panel"><h3 class="band">${close ? `${esc(iga(rn))} 조금 앞선 점` : `${esc(rn)}인 이유`}</h3><ul class="items">${good.map(l=>li(l,'ok')).join('') || '<li><span class="ico ok"></span><span>두 차의 점수가 모든 항목에서 같습니다.</span></li>'}</ul></article>
+        <article class="panel"><h3 class="band">${close ? `${esc(iga(rn))} 조금 앞선 점` : `${esc(rn)}${m.why}`}</h3><ul class="items">${good.map(l=>li(l,'ok')).join('') || '<li><span class="ico ok"></span><span>두 차의 점수가 모든 항목에서 같습니다.</span></li>'}</ul></article>
         ${trade.length ? `<article class="panel peach"><h3 class="band">알고 고를 점</h3><ul class="items">${trade.map(l=>li(l,'no')).join('')}</ul></article>` : ''}
       </div>`; })()}
-    ${(state.memo.wife.trim() || state.memo.kids.trim()) ? `<div class="panel neutral"><h3 class="band">가족 한마디</h3><div class="memo" style="background:none">
-      ${state.memo.wife.trim() ? `<div><b>아내</b>${esc(state.memo.wife.trim())}</div>` : ''}
-      ${state.memo.kids.trim() ? `<div><b>아이들</b>${esc(state.memo.kids.trim())}</div>` : ''}
-    </div></div>` : ''}
-    <p class="sc-foot">가중치 ${CRIT.map(c=>c.label+' '+num(w[c.k])).join('·')} · 휘발유 ${f0(num(state.gas))}원/L · 연 ${f0(R.annualKm)}km · ${state.delivery==='2027'?'2027년 이후':'2026년 내'} 출고 · 분당지점 할인 반영, 취득세·공채 포함${isOfficial(rec.car) ? ' · ' + PHOTO_CREDIT : ''}</p>
+    ${(()=>{ const memos = org
+        ? [['담당자', state.memo.author], ['검토자', state.memo.reviewer]]
+        : [['아내', state.memo.wife], ['아이들', state.memo.kids]];
+      const filled = memos.filter(([,t])=>(t||'').trim());
+      return filled.length ? `<div class="panel neutral"><h3 class="band">${m.memoTitle}</h3><div class="memo" style="background:none">
+      ${filled.map(([who,t])=>`<div><b>${who}</b>${esc(t.trim())}</div>`).join('')}
+    </div></div>` : ''; })()}
+    <p class="sc-foot">가중치 ${crit().map(c=>c.label+' '+num(w[c.k])).join('·')} · 휘발유 ${f0(num(state.gas))}원/L · 연 ${f0(R.annualKm)}km${org ? ` · 보유 ${Y}년` : ''} · ${state.delivery==='2027'?'2027년 이후':'2026년 내'} 출고 · ${org ? (R.exempt ? '취득세 면제 기준' : '취득세·공채 포함') : '분당지점 할인 반영, 취득세·공채 포함'}${isOfficial(rec.car) ? ' · ' + PHOTO_CREDIT : ''}</p>
   </div>
   <div class="actions">
-    <button class="btn" type="button" id="savePng">이미지 저장</button>
-    <button class="btn primary" type="button" id="sharePng">공유하기 (카톡)</button>
+    <button class="btn" type="button" id="savePng">${org ? '결재 첨부용 이미지 저장' : '이미지 저장'}</button>
+    <button class="btn primary" type="button" id="sharePng">${org ? '공유하기' : '공유하기 (카톡)'}</button>
     <button class="btn full" type="button" data-go="1">처음부터 다시</button>
   </div>
+  ${org ? `<section class="card neutral">
+    <h2>구매 검토 보고 <span class="sub">기안문 형식 · 결재 시스템에 붙여 넣으세요</span></h2>
+    <textarea class="report" id="reportText" readonly>${esc(reportText(R, rec, rival, lines, close))}</textarea>
+    <div class="actions" style="margin-top:10px"><button class="btn primary full" type="button" id="copyReport">문안 복사</button></div>
+    <p class="note">결론 카드 이미지를 ‘붙임’으로 함께 첨부하세요. 숫자는 견적서 기준으로 한 번 더 확인해 주세요.</p>
+  </section>` : ''}
   <p class="note">점수는 ② 기준 화면에서 바꾸면 바로 다시 계산돼요.</p>`;
+}
+
+/* 화면 문장(~습니다/~요)을 보고서 문체(~음/~함)로 바꾼다 */
+function formal(t){
+  return t.replace(/앞섭니다\./g,'앞섬.').replace(/줄어듭니다\./g,'줄어듦.').replace(/적게 듭니다/g,'적게 듦')
+    .replace(/낫습니다\./g,'나음.').replace(/적어요\./g,'적음.').replace(/받았습니다/g,'받음').replace(/필요해요\./g,'필요함.')
+    .replace(/같습니다\./g,'같음.').replace(/같습니다/g,'같음');
+}
+/* 부대·기관용 구매 검토 보고 문안 (기안문 형식: 1. 2. / 가. 나. / 끝.) */
+function reportText(R, rec, rival, lines, close){
+  const o = state.org, Y = R.Y, ko = ['가','나','다','라','마','바'];
+  const name = x => `${bigName(x.car)} (${x.car.name})`;
+  const ranked = R.ranked;
+  const budget = num(o.budget);
+  const L = [];
+  L.push(`제목: ${o.dept ? o.dept + ' ' : ''}업무용 차량 구매 기종 선정 검토 보고`, '');
+  L.push('1. 목적');
+  L.push(`  ${o.purpose ? o.purpose + '에 사용할 ' : ''}업무용 차량 후보 ${R.cars.length}종을 총소유비용·연비·임무 적합성 기준으로 비교하여 구매 기종을 선정하고자 함.`, '');
+  L.push('2. 검토 대상');
+  R.cars.forEach((x,i)=>L.push(`  ${ko[i]}. ${name(x)}: 출고가 ${fm(num(x.car.price))}만 원${num(x.car.discount) ? `, 할인 후 ${fm(x.net)}만 원` : ''}, 복합연비 ${f1(x.fuel)}km/L`));
+  L.push('');
+  L.push('3. 검토 기준');
+  L.push(`  가. 평가 항목(가중치): ${crit().map(c=>`${c.label} ${num(state.weights[c.k])}%`).join(', ')}`);
+  L.push(`  나. 운용 조건: 보유 ${Y}년, 연 주행 ${f0(R.annualKm)}km, 휘발유 ${f0(num(state.gas))}원/L, ${R.exempt ? '취득세 면제' : '취득세·공채 포함'}`);
+  L.push('');
+  L.push('4. 검토 결과');
+  L.push(`  가. 종합 점수(100점 만점): ${ranked.map(x=>`${bigName(x.car)} ${f1(x.score)}점`).join(', ')}`);
+  L.push(`  나. 실구매 총액: ${R.cars.map(x=>`${bigName(x.car)} ${fm(x.total)}만 원`).join(', ')}`);
+  L.push(`  다. ${Y}년 총소유비용: ${R.cars.map(x=>`${bigName(x.car)} ${fm(x.cum[Y])}만 원`).join(', ')}`);
+  if (budget) L.push(`  라. 예산 한도(${fm(budget)}만 원) 대비: ${R.cars.map(x=>`${bigName(x.car)} ${x.total <= budget ? '이내' : fm(x.total - budget) + '만 원 초과'}`).join(', ')}`);
+  L.push('');
+  L.push('5. 결론 및 건의');
+  if (close) L.push(`  가. 두 기종의 점수 차가 3점 이내(${f1(rec.score)}점 대 ${f1(rival.score)}점)로, 추가 시승·견적 비교 후 재검토를 건의함.`);
+  else L.push(`  가. ${name(rec)} 구매를 건의함 (${f1(rec.score)}점, 차순위 ${bigName(rival.car)} ${f1(rival.score)}점).`);
+  const good = lines.filter(l=>!l.trade), trade = lines.filter(l=>l.trade);
+  if (good.length){ L.push('  나. 선정 사유'); good.forEach(l=>L.push(`    - ${l.tag}: ${formal(l.text)}`)); }
+  if (trade.length){ L.push(`  ${good.length ? '다' : '나'}. 고려 사항`); trade.forEach(l=>L.push(`    - ${l.tag}: ${formal(l.text)}`)); }
+  if ((state.memo.author||'').trim() || (state.memo.reviewer||'').trim()){
+    L.push('', '6. 의견');
+    if ((state.memo.author||'').trim()) L.push(`  가. 담당자: ${state.memo.author.trim()}`);
+    if ((state.memo.reviewer||'').trim()) L.push(`  ${(state.memo.author||'').trim() ? '나' : '가'}. 검토자: ${state.memo.reviewer.trim()}`);
+  }
+  L.push('', '붙임  차량 비교 결과 카드 1부.  끝.');
+  return L.join('\n');
 }
 function drawRadar(){
   if (!chartBase()) return;
@@ -899,8 +1118,8 @@ function drawRadar(){
   const cv = $('#radarChart'); if (!cv) return;
   charts.push(new Chart(cv, {
     type:'radar',
-    data:{ labels: CRIT.map(c=>c.label), datasets: R.ranked.map(x=>{ const col = carColor(x.car); return {
-      label: x.car.short||x.car.name, data: CRIT.map(c=>r1(x.s[c.k])), borderColor: col, backgroundColor: rgba(col,.16), pointBackgroundColor: col, borderWidth:2, pointRadius:3 }; }) },
+    data:{ labels: crit().map(c=>c.label), datasets: R.ranked.map(x=>{ const col = carColor(x.car); return {
+      label: x.car.short||x.car.name, data: crit().map(c=>r1(x.s[c.k])), borderColor: col, backgroundColor: rgba(col,.16), pointBackgroundColor: col, borderWidth:2, pointRadius:3 }; }) },
     options:{ responsive:true, maintainAspectRatio:false,
       plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, boxHeight:10 } } },
       scales:{ r:{ min:0, max:10, ticks:{ stepSize:2, display:false }, grid:{ color: cssVar('--line') }, angleLines:{ color: cssVar('--line') }, pointLabels:{ color: cssVar('--ink'), font:{ size:13, weight:'600' } } } } }
@@ -930,7 +1149,7 @@ async function getCardBlob(){
 function fileName(ext){
   const R = compute(state);
   const d = new Date();
-  return `내차결정_${R.ranked.map(x=>x.car.short||x.car.name).slice(0,2).join('_vs_')}_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.${ext}`.replace(/[\\/:*?"<>|\s]+/g,'_');
+  return `${M().file}_${R.ranked.map(x=>x.car.short||x.car.name).slice(0,2).join('_vs_')}_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.${ext}`.replace(/[\\/:*?"<>|\s]+/g,'_');
 }
 let dlPromise = null;
 function getDownloads(){
@@ -980,7 +1199,7 @@ async function onSavePng(){
     const r = await saveFile(fileName('png'), blob, 'png');
     if (r === 'saved') toast('이미지를 저장했어요');
   } catch(e){ toast('이미지를 만들지 못했어요. 다시 눌러 주세요.'); }
-  finally { btn.disabled = false; btn.textContent = '이미지 저장'; }
+  finally { btn.disabled = false; btn.textContent = state.mode === 'org' ? '결재 첨부용 이미지 저장' : '이미지 저장'; }
 }
 async function onShare(){
   const btn = $('#sharePng'); btn.disabled = true; btn.textContent = '준비 중…';
@@ -989,13 +1208,13 @@ async function onShare(){
     if (!blob) { toast('이미지를 만들지 못했어요. 다시 눌러 주세요.'); return; }
     const file = new File([blob], fileName('png'), {type:'image/png'});
     if (navigator.canShare && navigator.share && navigator.canShare({files:[file]})){
-      try { await navigator.share({files:[file], title:'우리 집 차 결정'}); return; }
+      try { await navigator.share({files:[file], title:M().share}); return; }
       catch(e){ if (e && e.name === 'AbortError') return; }
     }
     const r = await saveFile(fileName('png'), blob, 'png');
-    if (r === 'saved') toast('저장한 이미지를 카톡에서 사진으로 보내 주세요', 4000);
+    if (r === 'saved') toast(state.mode === 'org' ? '저장한 이미지를 결재 붙임으로 첨부해 주세요' : '저장한 이미지를 카톡에서 사진으로 보내 주세요', 4000);
   } catch(e){ toast('공유를 준비하지 못했어요. 이미지 저장을 이용해 주세요.'); }
-  finally { btn.disabled = false; btn.textContent = '공유하기 (카톡)'; }
+  finally { btn.disabled = false; btn.textContent = state.mode === 'org' ? '공유하기' : '공유하기 (카톡)'; }
 }
 
 /* ---------- 시트 (차량 편집 · 설정) ---------- */
@@ -1011,7 +1230,7 @@ function openEditor(index){
   const isNew = index < 0;
   const used = state.cars.map(c=>c.color);
   const draft = isNew
-    ? {id:'car'+Date.now(), name:'', short:'', year:'2026', color:[0,1,2,3].find(c=>!used.includes(c)) ?? 2, body:'SUV', price:0, discount:0, fuel:0, power:'', drive:'', powertrain:'', length:0, width:0, height:0, wheelbase:0, photo:'', pros:[], cons:[], scores:{design:7,durability:7,pref:7}}
+    ? {id:'car'+Date.now(), name:'', short:'', year:'2026', color:[0,1,2,3].find(c=>!used.includes(c)) ?? 2, body:'SUV', price:0, discount:0, fuel:0, power:'', drive:'', powertrain:'', length:0, width:0, height:0, wheelbase:0, photo:'', pros:[], cons:[], scores:Object.fromEntries(crit().filter(c=>!c.auto).map(c=>[c.k,7]))}
     : JSON.parse(JSON.stringify(state.cars[index]));
   editing = {index, draft, confirmDel:false};
   const d = draft;
@@ -1022,7 +1241,7 @@ function openEditor(index){
       <div class="two">${fld('name','이름',d.name,'text','placeholder="예: Grandeur HEV" required')}${fld('short','짧은 이름 (결론 카드)',d.short,'text','placeholder="예: 그랜저"')}</div>
       <div class="two">${fld('year','연식',d.year)}
         <label class="field"><span>차체</span><select id="e_body"><option ${d.body==='세단'?'selected':''}>세단</option><option ${d.body==='SUV'?'selected':''}>SUV</option></select></label></div>
-      <div class="two">${fld('price','출고가 (만 원)',d.price,'number')}${fld('discount','분당 할인 (만 원)',d.discount,'number')}</div>
+      <div class="two">${fld('price','출고가 (만 원)',d.price,'number')}${fld('discount',state.mode === 'org' ? '할인 (만 원)' : '분당 할인 (만 원)',d.discount,'number')}</div>
       <div class="two">${fld('fuel','복합연비 (km/L)',d.fuel,'number')}${fld('power','시스템 출력',d.power)}</div>
       <div class="two">${fld('powertrain','파워트레인',d.powertrain)}${fld('drive','구동방식',d.drive)}</div>
       <div class="two">${fld('length','전장 (mm)',d.length,'number')}${fld('width','전폭 (mm)',d.width,'number')}</div>
@@ -1082,7 +1301,7 @@ function openSettings(){
     <button class="btn primary wide" type="button" id="doExport">백업 내보내기 (JSON 파일)</button>
     <button class="btn wide" type="button" id="doImport">백업 불러오기</button>
     <button class="btn danger wide" type="button" id="doReset">기본값으로 초기화</button>
-    <p class="note" id="resetHint" style="margin:0" hidden>한 번 더 누르면 모든 입력과 추가한 차가 기본값으로 돌아가요.</p>`);
+    <p class="note" id="resetHint" style="margin:0" hidden>한 번 더 누르면 두 용도의 입력과 추가한 차가 모두 예제로 돌아가요.</p>`);
 }
 
 /* ---------- 이벤트 ---------- */
@@ -1091,6 +1310,18 @@ document.addEventListener('click', async e=>{
   if (!t) return;
   if (t.matches('[data-scrim]')) { if (e.target === t) closeSheet(); return; }
   if (t.dataset.go){ closeSheet(); go(+t.dataset.go); return; }
+  if (t.id === 'goHome'){ closeSheet(); armed = ''; goHome(); return; }
+  if (t.dataset.open){
+    const mode = t.dataset.open, how = t.dataset.how;
+    if (how !== 'open' && store[mode].updatedAt && armed !== mode + how){ armed = mode + how; render(); return; }
+    armed = ''; openMode(mode, how); toast(how === 'example' ? '예제를 불러왔어요' : how === 'blank' ? '빈 양식을 열었어요' : MODES[mode].name); return;
+  }
+  if (t.id === 'copyReport'){
+    const ta = $('#reportText');
+    try { await navigator.clipboard.writeText(ta.value); toast('검토 보고 문안을 복사했어요'); }
+    catch(err){ ta.focus(); ta.select(); toast('선택된 문안을 복사해 주세요'); }
+    return;
+  }
   if (t.id === 'prev'){ go(state.step-1); return; }
   if (t.id === 'next'){ go(state.step === 4 ? 1 : state.step+1); return; }
   if (t.dataset.edit !== undefined){ openEditor(+t.dataset.edit); return; }
@@ -1107,7 +1338,7 @@ document.addEventListener('click', async e=>{
     state.cars.splice(editing.index,1); editing = null; closeSheet(); save(); render(); toast('삭제했어요'); return;
   }
   if (t.id === 'doExport'){
-    const blob = new Blob([JSON.stringify({app:'car-decision-helper', exportedAt:new Date().toISOString(), state}, null, 2)], {type:'application/json'});
+    const blob = new Blob([JSON.stringify({app:'car-decision-helper', exportedAt:new Date().toISOString(), state: store}, null, 2)], {type:'application/json'});
     const r = await saveFile(fileName('json').replace('.json','_백업.json'), blob, 'json');
     if (r === 'saved') toast('백업 파일을 저장했어요');
     return;
@@ -1115,7 +1346,7 @@ document.addEventListener('click', async e=>{
   if (t.id === 'doImport'){ $('#importFile').click(); return; }
   if (t.id === 'doReset'){
     if (!t.dataset.armed){ t.dataset.armed = '1'; t.textContent = '정말 초기화하기'; $('#resetHint').hidden = false; return; }
-    state = defaults(); closeSheet(); save(); render(); toast('기본값으로 되돌렸어요'); return;
+    store = normalizeStore(null); setMode('family'); closeSheet(); save(); store.view = 'home'; saveLocal(); render(); toast('처음 상태로 되돌렸어요'); return;
   }
   if (t.id === 'cloudSend'){
     const email = ($('#cloudEmail').value || '').trim();
@@ -1140,6 +1371,8 @@ document.addEventListener('input', e=>{
   if (t.dataset.w){ state.weights[t.dataset.w] = num(t.value); $('#wo_'+t.dataset.w).textContent = t.value+'%'; save(); refresh2(); return; }
   if (t.dataset.score){ const i = +t.dataset.car; state.cars[i].scores[t.dataset.score] = num(t.value); const o = $(`#so_${t.dataset.score}_${i}`); if (o) o.textContent = t.value + '점'; save(); refresh2(); return; }
   if (t.dataset.memo){ state.memo[t.dataset.memo] = t.value; save(); return; }
+  if (t.dataset.org){ const k = t.dataset.org; state.org[k] = (k === 'budget' || k === 'years') ? num(t.value) : t.value; save(); refresh1(); return; }
+  if (t.name === 'taxMode'){ state.taxMode = t.value; save(); refresh3(); return; }
   if (t.dataset.km){ state.km[t.dataset.km] = Math.max(0,num(t.value)); save(); refresh3(); return; }
   if (t.dataset.set){ const k = t.dataset.set; state[k] = k === 'region' ? t.value : num(t.value); save(); if (k !== 'region') refresh3(); return; }
   if (t.name === 'delivery'){ state.delivery = t.value; save(); refresh3(); return; }
@@ -1164,19 +1397,20 @@ $('#importFile').addEventListener('change', async e=>{
   try {
     const obj = JSON.parse(await f.text());
     const src = obj && obj.state ? obj.state : obj;
-    if (!src || !Array.isArray(src.cars) || src.cars.length < 2) throw new Error('bad');
-    state = merge(defaults(), src); state.step = 1;
+    const ok = src && ((src.family && Array.isArray(src.family.cars)) || (Array.isArray(src.cars) && src.cars.length >= 2));
+    if (!ok) throw new Error('bad');
+    store = normalizeStore(src); setMode(store.mode); store.view = 'flow'; state.step = 1;
     closeSheet(); save(); render(); toast('백업을 불러왔어요');
   } catch(err){ toast('이 앱의 백업 파일이 아니에요. 내보내기로 만든 JSON 파일을 골라 주세요.', 3600); }
 });
 
 const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-const rerenderCharts = ()=>{ if (state.step === 3) refresh3(); if (state.step === 4){ killCharts(); drawRadar(); scheduleCapture(); } };
+const rerenderCharts = ()=>{ if (store.view === 'home') return; if (state.step === 3) refresh3(); if (state.step === 4){ killCharts(); drawRadar(); scheduleCapture(); } };
 if (mq && mq.addEventListener) mq.addEventListener('change', rerenderCharts);
 new MutationObserver(rerenderCharts).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
 
 /* 테스트용 노출 */
-window.__carDecision = { compute: ()=>compute(state), defaults, reasons };
+window.__carDecision = { compute: ()=>compute(state), store: ()=>store, defaultsFamily, defaultsOrg, reasons };
 
 render();
 initCloud();
