@@ -5,10 +5,13 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
 <style>
-/* Layout: a mobile form — cover card with an accent top bar, one question card per block, sticky progress header, fixed bottom actions. */
+/* Layout: infographic slides — big centered numbered title, rounded panels with a tinted title band (mint = good, peach = caution), check / cross icons, dotted paper. */
 :root{
-  --paper:#f2f4f6; --surface:#ffffff; --sunk:#f5f6f8; --ink:#191f28; --muted:#6b7684; --line:#e5e8eb; --line-strong:#d1d6db;
-  --accent:#0f9f62; --accent-ink:#0b7d4d; --accent-soft:rgba(15,159,98,.10); --on-accent:#ffffff;
+  --paper:#f4f6f7; --dotc:rgba(25,31,40,.06); --surface:#ffffff; --sunk:#f5f6f8; --ink:#1d232b; --muted:#646e7a; --line:#e5e8eb; --line-strong:#d1d6db;
+  --accent:#17867a; --accent-ink:#0f6c62; --accent-soft:rgba(23,134,122,.10); --on-accent:#ffffff;
+  --mint-band:#dcf0ea; --mint-line:#a9d9cc; --mint-ink:#156b5f;
+  --peach-band:#fbe5d5; --peach-line:#f0c3a2; --peach-ink:#9a4a17;
+  --neutral-band:#eef1f4; --neutral-line:#d7dde3;
   --c0:#2563eb; --c1:#e8710a; --c2:#0f9f62; --c3:#7c4dda;
   --warn:#a35200; --warn-bg:#fff4e5; --good:#0b7d4d; --bad:#d63b2f;
   --shadow:0 1px 2px rgba(25,31,40,.04),0 2px 8px rgba(25,31,40,.04);
@@ -18,8 +21,11 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#101216; --surface:#1b1e24; --sunk:#24282f; --ink:#eceef1; --muted:#9aa3ae; --line:#2e333b; --line-strong:#3b414a;
-    --accent:#2fcf8a; --accent-ink:#4ddb9c; --accent-soft:rgba(47,207,138,.14); --on-accent:#05271a;
+    --paper:#111417; --dotc:rgba(255,255,255,.05); --surface:#1b1f24; --sunk:#252a30; --ink:#eceef1; --muted:#9aa3ae; --line:#2e333b; --line-strong:#3b414a;
+    --accent:#3cc7b4; --accent-ink:#62d6c6; --accent-soft:rgba(60,199,180,.14); --on-accent:#06231f;
+    --mint-band:rgba(60,199,180,.16); --mint-line:rgba(60,199,180,.42); --mint-ink:#7fe0d2;
+    --peach-band:rgba(245,150,90,.16); --peach-line:rgba(245,150,90,.42); --peach-ink:#ffb88a;
+    --neutral-band:#252a30; --neutral-line:#3b414a;
     --c0:#6aa1ff; --c1:#ff9a42; --c2:#2fcf8a; --c3:#a98bf5;
     --warn:#ffb867; --warn-bg:#3a2a13; --good:#4ddb9c; --bad:#ff7a6e;
     --shadow:none; --card-border:#2a2f37;
@@ -27,15 +33,18 @@
   }
 }
 :root[data-theme="dark"]{
-  --paper:#101216; --surface:#1b1e24; --sunk:#24282f; --ink:#eceef1; --muted:#9aa3ae; --line:#2e333b; --line-strong:#3b414a;
-  --accent:#2fcf8a; --accent-ink:#4ddb9c; --accent-soft:rgba(47,207,138,.14); --on-accent:#05271a;
+  --paper:#111417; --dotc:rgba(255,255,255,.05); --surface:#1b1f24; --sunk:#252a30; --ink:#eceef1; --muted:#9aa3ae; --line:#2e333b; --line-strong:#3b414a;
+  --accent:#3cc7b4; --accent-ink:#62d6c6; --accent-soft:rgba(60,199,180,.14); --on-accent:#06231f;
+  --mint-band:rgba(60,199,180,.16); --mint-line:rgba(60,199,180,.42); --mint-ink:#7fe0d2;
+  --peach-band:rgba(245,150,90,.16); --peach-line:rgba(245,150,90,.42); --peach-ink:#ffb88a;
+  --neutral-band:#252a30; --neutral-line:#3b414a;
   --c0:#6aa1ff; --c1:#ff9a42; --c2:#2fcf8a; --c3:#a98bf5;
   --warn:#ffb867; --warn-bg:#3a2a13; --good:#4ddb9c; --bad:#ff7a6e;
   --shadow:none; --card-border:#2a2f37;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
-body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;letter-spacing:-.01em;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
+body{background-color:var(--paper);background-image:radial-gradient(var(--dotc) 1.2px,transparent 1.2px);background-size:18px 18px;color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;letter-spacing:-.01em;-webkit-text-size-adjust:100%;-webkit-font-smoothing:antialiased}
 body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
 button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -62,25 +71,39 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 
 main .wrap{padding-block:16px calc(104px + env(safe-area-inset-bottom,0px));display:grid;gap:12px}
 
-/* form cards */
-.cover,.card,.pc,.tbl-card{background:var(--surface);border:1px solid var(--card-border);border-radius:var(--r);box-shadow:var(--shadow)}
-.cover{padding:22px 20px 20px;border-top:8px solid var(--accent);border-top-left-radius:var(--r);border-top-right-radius:var(--r)}
-.cover .kicker{font-size:12.5px;font-weight:700;color:var(--accent-ink);margin-bottom:6px}
-h1.h{font-weight:800;font-size:24px;line-height:1.3;margin:0;letter-spacing:-.03em;text-wrap:balance}
-.lede{margin:8px 0 0;color:var(--muted);font-size:14px}
-.card{padding:20px}
-h2{font-size:17px;margin:0 0 4px;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
-h2 .sub{display:block;font-weight:400;color:var(--muted);font-size:13px;margin:2px 0 0;letter-spacing:-.01em}
-.card > h2,.tbl-card > h2{margin-bottom:14px}
-.sec-title{font-size:15px;font-weight:700;margin:12px 4px 0;color:var(--ink)}
-.sec-title .sub{font-weight:400;color:var(--muted);font-size:12.5px;margin-left:6px}
+/* infographic panels: centered numbered title, panel with tinted title band */
+.cover{text-align:center;padding:10px 4px 6px}
+h1.h{font-weight:800;font-size:25px;line-height:1.3;margin:0;letter-spacing:-.04em;text-wrap:balance}
+.lede{margin:8px auto 0;color:var(--muted);font-size:14px;max-width:30em;text-wrap:balance}
+.card,.tbl-card,.panel{--band:var(--mint-band);--band-line:var(--mint-line);background:var(--surface);border:1.5px solid var(--band-line);border-radius:20px;overflow:hidden}
+.peach{--band:var(--peach-band);--band-line:var(--peach-line)}
+.neutral{--band:var(--neutral-band);--band-line:var(--neutral-line)}
+.card{padding:0 18px 18px}
+.card > h2:first-child,.tbl-card > h2:first-child,.panel > .band{margin:0 -18px 16px;padding:12px 16px;background:var(--band);border-bottom:1.5px solid var(--band-line);text-align:center;font-size:16.5px;font-weight:800;letter-spacing:-.03em}
+.tbl-card > h2:first-child,.panel > .band{margin:0 0 4px}
+h2{font-size:17px;margin:0 0 4px;font-weight:800;letter-spacing:-.03em;text-wrap:balance}
+h2 .sub{display:block;font-weight:500;color:var(--muted);font-size:12.5px;margin:2px 0 0;letter-spacing:-.01em}
+/* check / cross icons */
+.ico{flex:none;position:relative;display:inline-block;width:22px;height:22px;border:2px solid var(--ink);border-radius:50%;margin-top:1px}
+.ico.ok::after{content:"";position:absolute;left:6px;top:2.5px;width:5px;height:9px;border:solid var(--ink);border-width:0 2px 2px 0;transform:rotate(45deg)}
+.ico.no::before,.ico.no::after{content:"";position:absolute;left:4px;top:8px;width:10px;height:2px;background:var(--ink);border-radius:1px;transform:rotate(45deg)}
+.ico.no::after{transform:rotate(-45deg)}
+.items{list-style:none;margin:0;padding:10px 16px 16px;display:grid;gap:12px}
+.items li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start;font-size:14px;line-height:1.55}
+.items li b{display:block;font-size:15px;font-weight:800;letter-spacing:-.02em;margin-bottom:1px}
+.sec-title{font-size:15px;font-weight:800;margin:12px 4px 0;color:var(--ink)}
+.sec-title .sub{font-weight:500;color:var(--muted);font-size:12.5px;margin-left:6px}
+.car-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 4px 0}
+.car-head h3{margin:0;font-size:16px;font-weight:800;display:flex;align-items:center;letter-spacing:-.03em}
+.pc-pair{display:grid;gap:10px}
+@media (min-width:560px){.pc-pair{grid-template-columns:1fr 1fr}}
 .note{color:var(--muted);font-size:12.5px;margin:10px 2px 0;line-height:1.55}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--cc);margin-right:6px;vertical-align:1px;flex:none}
 .cc0{--cc:var(--c0);--ct:rgba(37,99,235,.12)} .cc1{--cc:var(--c1);--ct:rgba(232,113,10,.13)} .cc2{--cc:var(--c2);--ct:rgba(15,159,98,.12)} .cc3{--cc:var(--c3);--ct:rgba(124,77,218,.12)}
 
 /* step 1: car cards */
 .cars{display:grid;grid-auto-flow:column;grid-auto-columns:calc(50% - 5px);gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 0 4px}
-.car{scroll-snap-align:start;min-width:0;background:var(--surface);border:1px solid var(--card-border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.car{scroll-snap-align:start;min-width:0;background:var(--surface);border:1.5px solid var(--neutral-line);border-radius:20px;overflow:hidden;display:flex;flex-direction:column}
 .car img,.photo{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--sunk);max-width:100%}
 .car .body{padding:12px 14px 14px;display:grid;gap:10px;flex:1}
 .car .tag-car{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;color:var(--cc);background:var(--ct);border-radius:999px;padding:2px 8px;justify-self:start}
@@ -102,7 +125,7 @@ h2 .sub{display:block;font-weight:400;color:var(--muted);font-size:13px;margin:2
 .btn.danger{color:var(--bad);border-color:rgba(214,59,47,.35);background:transparent}
 .btn.wide{width:100%}
 .add{border:1.5px dashed var(--line-strong);background:transparent;border-radius:var(--r);padding:14px;color:var(--accent-ink);font-weight:700;width:100%}
-.tbl-card{padding:6px 0;overflow:hidden}
+.tbl-card{padding:0 0 4px}
 .tbl-wrap{overflow-x:auto}
 table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
 th,td{padding:11px 16px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
@@ -181,10 +204,14 @@ textarea{min-height:84px;resize:vertical}
 .insight b{color:var(--accent-ink)}
 
 /* step 4: share card */
-.share{background:var(--surface);border:1px solid var(--card-border);border-radius:22px;box-shadow:var(--shadow);padding:22px 18px 16px;display:grid;gap:16px;overflow:hidden}
+.share{background-color:var(--paper);background-image:radial-gradient(var(--dotc) 1.2px,transparent 1.2px);background-size:18px 18px;border:1.5px solid var(--neutral-line);border-radius:22px;padding:22px 16px 16px;display:grid;gap:14px;overflow:hidden}
+.share .sc-top{text-align:center}
+.share .sc-photo{background:var(--surface);border:1.5px solid var(--neutral-line);border-radius:20px;overflow:hidden}
+.share .radar-panel{padding:10px 8px 8px}
+.share .panel .items{padding-top:12px}
 .eyebrow{font-size:12px;color:var(--muted);font-weight:500}
 .verdict{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:var(--cc);background:var(--ct);border-radius:999px;padding:3px 10px;margin-top:10px}
-.sc-head{font-weight:800;font-size:28px;line-height:1.25;letter-spacing:-.035em;margin:8px 0 0;text-wrap:balance}
+.sc-head{font-weight:800;font-size:30px;line-height:1.25;letter-spacing:-.045em;margin:8px 0 0;text-wrap:balance}
 .sc-head em{font-style:normal;color:var(--cc)}
 .sc-vs{display:flex;gap:8px;margin-top:12px}
 .sc-vs > span{flex:1;background:var(--ct);border-radius:var(--r-sm);padding:10px 12px;font-size:12.5px;color:var(--muted);display:grid}
@@ -199,7 +226,7 @@ textarea{min-height:84px;resize:vertical}
 .bar b{text-align:right;font-variant-numeric:tabular-nums}
 .radar{position:relative;height:250px}
 .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.kpi{background:var(--sunk);border-radius:var(--r-sm);padding:12px 10px;display:grid;gap:3px;min-width:0}
+.kpi{background:var(--surface);border:1.5px solid var(--neutral-line);border-radius:16px;padding:12px 10px;display:grid;gap:3px;min-width:0}
 .kpi .k{font-size:11.5px;color:var(--muted)}
 .kpi .v{font-weight:800;font-size:17px;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
 .kpi .v small{font-size:11px;font-weight:500;margin-left:1px}
@@ -564,7 +591,7 @@ function step1(){
   const row = (label, fn, win=-1, txt=false) => `<tr><th scope="row">${label}</th>${cs.map((c,i)=>`<td class="cc${c.color} ${i===win?'win':''} ${txt?'txt':''}">${fn(c,i)}</td>`).join('')}</tr>`;
   const mm = v => num(v) ? f0(num(v)) : '—';
   return `
-  <section class="cover"><div class="kicker">1단계 · 차량 비교</div><h1 class="h">${esc(cs.map(c=>c.short||c.name).join(' vs '))}, 나란히 보기</h1>
+  <section class="cover"><h1 class="h">1. ${esc(cs.map(c=>c.short||c.name).join(' vs '))}, 나란히 보기</h1>
   <p class="lede">분당지점 견적 기준이에요. 카드의 ‘수정’에서 값과 사진을 바꿀 수 있어요.</p></section>
   <section>
     <div class="cars">${cs.map((c,i)=>`
@@ -585,8 +612,7 @@ function step1(){
   </section>
   ${cs.length < 4 ? '<button class="add" type="button" data-add>+ 차종 추가</button>' : ''}
   <section>
-    <h2 class="sec-title" style="margin:0 4px 10px">핵심 제원 <span class="sub">● 유리한 값</span></h2>
-    <div class="tbl-card"><div class="tbl-wrap"><table>
+    <div class="tbl-card neutral"><h2>핵심 제원 <span class="sub">● 표시는 유리한 값</span></h2><div class="tbl-wrap"><table>
       <thead><tr><th scope="col"></th>${cs.map(c=>`<th scope="col"><span class="dot cc${c.color}"></span>${esc(c.short||c.name)}</th>`).join('')}</tr></thead>
       <tbody>
         ${row('할인 후 가격', (c,i)=>`<span class="num">${fm(R.cars[i].net)}만</span>`, netWin)}
@@ -603,23 +629,20 @@ function step1(){
     </table></div></div>
     <p class="note">치수 단위는 mm. 2026년 10월 기사·견적 기준이며 한국토요타 공식 제원표로 최종 확인하세요.${cs.some(isOfficial) ? ` 차량 ${PHOTO_CREDIT}, 개인 비교용.` : ''}</p>
   </section>
-  <section style="display:grid;gap:10px">
-    <h2 class="sec-title" style="margin:0 4px">장단점</h2>
-    ${cs.map((c,i)=>`<article class="pc"><h3><span class="dot cc${c.color}"></span>${esc(c.name)}</h3>
-      <div class="pc-grid">
-        <div><div class="lbl plus">장점</div><ul class="plus-list">${c.pros.map(p=>`<li>${esc(p)}</li>`).join('') || '<li>—</li>'}</ul></div>
-        <div><div class="lbl minus">단점</div><ul class="minus-list">${c.cons.map(p=>`<li>${esc(p)}</li>`).join('') || '<li>—</li>'}</ul></div>
-      </div>
-      <div><button class="btn sm soft" type="button" data-edit="${i}">장단점 수정</button></div>
-    </article>`).join('')}
-  </section>`;
+  ${cs.map((c,i)=>{ const n = c.short||c.name; return `<section style="display:grid;gap:10px">
+    <div class="car-head"><h3><span class="dot cc${c.color}"></span>${esc(c.name)}</h3><button class="btn sm soft" type="button" data-edit="${i}">장단점 수정</button></div>
+    <div class="pc-pair">
+      <article class="panel"><h3 class="band">${esc(n)}의 장점</h3><ul class="items">${c.pros.map(p=>`<li><span class="ico ok"></span><span>${esc(p)}</span></li>`).join('') || '<li><span class="ico ok"></span><span>아직 적은 장점이 없어요.</span></li>'}</ul></article>
+      <article class="panel peach"><h3 class="band">${esc(n)}의 단점</h3><ul class="items">${c.cons.map(p=>`<li><span class="ico no"></span><span>${esc(p)}</span></li>`).join('') || '<li><span class="ico no"></span><span>아직 적은 단점이 없어요.</span></li>'}</ul></article>
+    </div>
+  </section>`; }).join('')}`;
 }
 
 /* ---------- ② 내 기준·점수 ---------- */
 function step2(){
   const cs = state.cars;
   return `
-  <section class="cover"><div class="kicker">2단계 · 내 기준·점수</div><h1 class="h">내 기준으로 점수 매기기</h1>
+  <section class="cover"><h1 class="h">2. 내 기준으로 점수 매기기</h1>
   <p class="lede">가격과 연비는 계산으로 자동 채점되고, 나머지 셋은 직접 매겨요.</p></section>
   <section class="card">
     <h2>가중치 <span class="sub">무엇을 얼마나 중요하게 볼까</span></h2>
@@ -629,7 +652,7 @@ function step2(){
       <output id="wo_${c.k}">${num(state.weights[c.k])}%</output></div>`).join('')}
     <div id="sumOut"></div>
   </section>
-  <section class="card">
+  <section class="card neutral">
     <h2>자동 점수 <span class="sub">10점 만점 · 수정 불가</span></h2>
     <div id="autoOut"></div>
   </section>
@@ -647,8 +670,8 @@ function step2(){
     <h2>지금 점수 <span class="sub">100점 만점</span></h2>
     <div id="liveOut"></div>
   </section>
-  <section class="card fields">
-    <h2 style="margin:0">가족 한마디 <span class="sub">점수엔 반영 안 하고 결론 카드에 표시</span></h2>
+  <section class="card fields peach">
+    <h2>가족 한마디 <span class="sub">점수엔 반영 안 하고 결론 카드에 표시</span></h2>
     <label class="field"><span>아내 한마디</span><textarea id="memoWife" data-memo="wife" placeholder="예: 캠리는 어때? 타고 내리기만 괜찮으면">${esc(state.memo.wife)}</textarea></label>
     <label class="field"><span>자녀 한마디</span><textarea id="memoKids" data-memo="kids" placeholder="예: 아빠 차는 세단이 멋있어">${esc(state.memo.kids)}</textarea></label>
   </section>`;
@@ -677,20 +700,19 @@ function refresh2(){
 /* ---------- ③ 실구매·유지비 ---------- */
 function step3(){
   return `
-  <section class="cover"><div class="kicker">3단계 · 실구매·유지비</div><h1 class="h">실제로 드는 돈</h1>
+  <section class="cover"><h1 class="h">3. 실제로 드는 돈</h1>
   <p class="lede">취득세와 공채까지 넣은 실구매 총액, 그리고 타는 동안의 연료비예요.</p></section>
   <section>
-    <h2 class="sec-title" style="margin:0 4px 10px">실구매 총액 <span class="sub">만 원</span></h2>
     <div id="buyOut"></div>
   </section>
   <section class="card fields">
-    <h2 style="margin:0">주행 <span class="sub">요일별 km</span></h2>
+    <h2>주행 <span class="sub">요일별 km</span></h2>
     <div class="days">${DAYS.map(([k,l])=>`<label for="km_${k}">${l}<input type="number" inputmode="decimal" min="0" id="km_${k}" data-km="${k}" value="${num(state.km[k])}"></label>`).join('')}</div>
     <div class="kmline" id="kmOut"></div>
     <label class="field"><span>휘발유 가격 (원/L)</span><input type="number" inputmode="numeric" id="gas" data-set="gas" value="${num(state.gas)}"><small>2026년 10월 전국 평균 1,857.6원</small></label>
   </section>
-  <section class="card fields">
-    <h2 style="margin:0">세금 설정</h2>
+  <section class="card fields peach">
+    <h2>세금 설정 <span class="sub">견적서 숫자로 맞춰 주세요</span></h2>
     <label class="field"><span>등록 지역</span><input type="text" id="region" data-set="region" value="${esc(state.region)}"></label>
     <div class="two">
       <label class="field"><span>공채 매입률 (%)</span><input type="number" inputmode="decimal" step="0.1" id="bondRate" data-set="bondRate" value="${num(state.bondRate)}"></label>
@@ -723,7 +745,7 @@ function refresh3(){
   ];
   if (R.extra) rows.push(['개소세 감면 종료분', x=>'+'+f1(x.extra)]);
   const minT = Math.min(...cs.map(x=>x.total));
-  $('#buyOut').innerHTML = `<div class="tbl-card"><div class="tbl-wrap"><table>
+  $('#buyOut').innerHTML = `<div class="tbl-card"><h2>실구매 총액 <span class="sub">단위: 만 원</span></h2><div class="tbl-wrap"><table>
     <thead><tr><th scope="col"></th>${cs.map(x=>`<th scope="col"><span class="dot cc${x.car.color}"></span>${esc(x.car.short||x.car.name)}</th>`).join('')}</tr></thead>
     <tbody>${rows.map(([l,fn])=>`<tr><th scope="row">${l}</th>${cs.map(x=>`<td class="num">${fn(x)}</td>`).join('')}</tr>`).join('')}
       <tr class="total"><th scope="row">실구매 총액</th>${cs.map(x=>`<td class="num cc${x.car.color} ${x.total===minT && cs.filter(y=>y.total===minT).length===1?'win':''}">${f1(x.total)}</td>`).join('')}</tr>
@@ -733,7 +755,7 @@ function refresh3(){
   $('#kmOut').innerHTML = `<span>주 <b class="num">${f0(R.weekKm)}</b> km</span><span>연 <b class="num">${f0(R.annualKm)}</b> km (×52주)</span>`;
 
   const years = [1,5,10,20];
-  $('#cumOut').innerHTML = `<div class="tbl-wrap" style="margin:14px -20px 0"><table>
+  $('#cumOut').innerHTML = `<div class="tbl-wrap" style="margin:14px -18px 0"><table>
     <thead><tr><th scope="col"></th>${cs.map(x=>`<th scope="col"><span class="dot cc${x.car.color}"></span>${esc(x.car.short||x.car.name)}</th>`).join('')}</tr></thead>
     <tbody>${years.map(y=>{ const m = Math.min(...cs.map(x=>x.cum[y])); return `<tr><th scope="row">${y}년</th>${cs.map(x=>`<td class="num cc${x.car.color} ${x.cum[y]===m?'win':''}">${f1(x.cum[y])}</td>`).join('')}</tr>`; }).join('')}</tbody>
     </table></div>
@@ -767,29 +789,31 @@ function step4(){
   const w = state.weights;
   return `
   <div id="shareCard" class="share">
-    <div>
+    <div class="sc-top">
       <div class="eyebrow">우리 집 차 결정 · ${ds}</div>
       ${close
         ? `<h1 class="sc-head">박빙이에요.<br>시승을 한 번 더 해 보세요</h1>`
         : `<span class="verdict cc${rec.car.color}">우리 집 추천</span><h1 class="sc-head cc${rec.car.color}">추천: <em>${esc(rn)}</em></h1>`}
       <div class="sc-vs"><span class="cc${rec.car.color}">${esc(rn)}<b>${f1(rec.score)}<small>점</small></b></span><span class="cc${rival.car.color}">${esc(vn)}<b>${f1(rival.score)}<small>점</small></b></span></div>
     </div>
-    ${photoImg(rec.car, 'photo')}
-    ${R.cars.length > 2 ? `<div class="bars">${R.ranked.map(x=>`<div class="bar cc${x.car.color}"><span class="who">${esc(x.car.short||x.car.name)}</span><span class="track"><span class="fill" style="display:block;width:${x.score/maxScore*100}%"></span></span><b>${f1(x.score)}</b></div>`).join('')}</div>` : ''}
-    <div class="radar"><canvas id="radarChart" role="img" aria-label="5개 기준 점수 레이더 차트"></canvas></div>
+    <div class="sc-photo">${photoImg(rec.car, 'photo')}</div>
+    ${R.cars.length > 2 ? `<div class="panel neutral"><h3 class="band">전체 순위</h3><div class="bars" style="padding:12px 16px 14px">${R.ranked.map(x=>`<div class="bar cc${x.car.color}"><span class="who">${esc(x.car.short||x.car.name)}</span><span class="track"><span class="fill" style="display:block;width:${x.score/maxScore*100}%"></span></span><b>${f1(x.score)}</b></div>`).join('')}</div></div>` : ''}
+    <div class="panel neutral"><h3 class="band">5가지 기준 점수</h3><div class="radar-panel"><div class="radar"><canvas id="radarChart" role="img" aria-label="5개 기준 점수 레이더 차트"></canvas></div></div></div>
     <div class="kpis">
       <div class="kpi"><span class="k">실구매 총액 차이</span><span class="v">${fm(Math.abs(dTotal))}<small>만 원</small></span><span class="s cc${rec.car.color}" style="color:var(--cc)">${sign(dTotal, esc(iga(rn))+' 저렴', esc(iga(rn))+' 비쌈')}</span></div>
       <div class="kpi"><span class="k">5년 총비용 차이</span><span class="v">${fm(Math.abs(d5))}<small>만 원</small></span><span class="s cc${rec.car.color}" style="color:var(--cc)">${sign(d5, esc(iga(rn))+' 저렴', esc(iga(rn))+' 비쌈')}</span></div>
       <div class="kpi"><span class="k">연비 차이</span><span class="v">${f1(Math.abs(dFuel))}<small>km/L</small></span><span class="s cc${(dFuel>=0?rec:rival).car.color}" style="color:var(--cc)">${Math.abs(dFuel)<0.05?'같음':esc(iga(dFuel>0?rn:vn))+' 좋음'}</span></div>
     </div>
-    <div>
-      <div class="lbl">${close ? '두 차의 차이' : `${esc(rn)}인 이유`}</div>
-      <ol class="reasons">${lines.map(l=>`<li class="${l.trade?'trade':''} cc${rec.car.color}"><span class="tag">${l.tag}</span><span>${esc(l.text)}</span></li>`).join('') || '<li><span class="tag">—</span><span>두 차의 점수가 모든 항목에서 같습니다.</span></li>'}</ol>
-    </div>
-    ${(state.memo.wife.trim() || state.memo.kids.trim()) ? `<div class="memo">
+    ${(()=>{ const good = lines.filter(l=>!l.trade), trade = lines.filter(l=>l.trade);
+      const li = (l, ico) => `<li><span class="ico ${ico}"></span><span><b>${esc(l.tag)}</b>${esc(l.text)}</span></li>`;
+      return `<div class="pc-pair">
+        <article class="panel"><h3 class="band">${close ? `${esc(iga(rn))} 조금 앞선 점` : `${esc(rn)}인 이유`}</h3><ul class="items">${good.map(l=>li(l,'ok')).join('') || '<li><span class="ico ok"></span><span>두 차의 점수가 모든 항목에서 같습니다.</span></li>'}</ul></article>
+        ${trade.length ? `<article class="panel peach"><h3 class="band">알고 고를 점</h3><ul class="items">${trade.map(l=>li(l,'no')).join('')}</ul></article>` : ''}
+      </div>`; })()}
+    ${(state.memo.wife.trim() || state.memo.kids.trim()) ? `<div class="panel neutral"><h3 class="band">가족 한마디</h3><div class="memo" style="background:none">
       ${state.memo.wife.trim() ? `<div><b>아내</b>${esc(state.memo.wife.trim())}</div>` : ''}
       ${state.memo.kids.trim() ? `<div><b>아이들</b>${esc(state.memo.kids.trim())}</div>` : ''}
-    </div>` : ''}
+    </div></div>` : ''}
     <p class="sc-foot">가중치 ${CRIT.map(c=>c.label+' '+num(w[c.k])).join('·')} · 휘발유 ${f0(num(state.gas))}원/L · 연 ${f0(R.annualKm)}km · ${state.delivery==='2027'?'2027년 이후':'2026년 내'} 출고 · 분당지점 할인 반영, 취득세·공채 포함${isOfficial(rec.car) ? ' · ' + PHOTO_CREDIT : ''}</p>
   </div>
   <div class="actions">
