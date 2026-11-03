@@ -41,7 +41,7 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 GitHub `main`에 push하면 Vercel이 자동으로 배포합니다: https://car-decision-helper-eight.vercel.app
 
 빌드는 `scripts/build-vercel.mjs`가 `car-decision-helper.html`에 Supabase 설정을 넣어 `public/index.html`을 만듭니다.
-Vercel 프로젝트의 Environment Variables에 아래 두 값을 등록해야 클라우드 저장이 켜집니다 (`.env.example` 참고).
+값은 `supabase.public.json`(공개 키라 저장소에 둠)에서 읽고, Vercel Environment Variables에 같은 값을 등록하면 그쪽이 우선합니다 (`.env.example` 참고).
 
 | 이름 | 값 |
 |---|---|

@@ -1,0 +1,5 @@
+{
+  "_note": "브라우저에 들어가는 공개 설정. publishable 키는 공개해도 되고, 데이터는 RLS로 본인만 읽고 쓴다. secret 키는 절대 넣지 않는다.",
+  "url": "https://rresehigwhlcotfksmrb.supabase.co",
+  "publishableKey": "sb_publishable_pS7u0Pd4Mamx8r4YkGaI3A_g3voOeWi"
+}
